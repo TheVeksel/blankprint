@@ -14,6 +14,9 @@ interface HunterForm {
   issuedBy?: string;
 }
 
+const sortByFullName = (list: HunterForm[]) =>
+  list.slice().sort((a, b) => a.fullName.localeCompare(b.fullName, 'ru', { sensitivity: 'base' }));
+
 const UserManager = () => {
   const [hunters, setHunters] = useState<HunterForm[]>([]);
   const [form, setForm] = useState<HunterForm>({ fullName: '', series: '', number: '', issueDate: '' });
@@ -24,7 +27,7 @@ const UserManager = () => {
 
   const loadHunters = async () => {
     const all = await getAllHunters();
-    setHunters(all);
+    setHunters(sortByFullName(all));
   };
 
   useEffect(() => { loadHunters(); }, []);
@@ -42,14 +45,14 @@ const UserManager = () => {
     }
     await addHunter(form);
     setForm({ fullName: '', series: '', number: '', issueDate: '' });
-    loadHunters();
+    await loadHunters();
   };
 
   const handleDelete = async (id: number) => {
     if (window.confirm('Удалить этого пользователя?')) {
       await deleteHunter(id);
       if (editingId === id) setEditingId(null);
-      loadHunters();
+      await loadHunters();
     }
   };
 
@@ -57,7 +60,7 @@ const UserManager = () => {
     if (window.confirm('Удалить всех пользователей?')) {
       await clearHunters();
       setEditingId(null);
-      loadHunters();
+      await loadHunters();
     }
   };
 
@@ -68,7 +71,7 @@ const UserManager = () => {
   const handleSave = async (hunter: HunterForm) => {
     await updateHunter(hunter);
     setEditingId(null);
-    loadHunters();
+    await loadHunters();
   };
 
   const handleExport = () => {
@@ -91,24 +94,25 @@ const UserManager = () => {
       if (!Array.isArray(data)) throw new Error('Неверный формат файла');
       await clearHunters();
       for (const hunter of data) {
-        await addHunter(hunter);
+        // Удаляем id, чтобы IndexedDB сгенерировал новый (если в файле они есть)
+        const { id, ...rest } = hunter as any;
+        await addHunter(rest as HunterForm);
       }
-      loadHunters();
+      await loadHunters();
       alert('Импорт завершён успешно');
     } catch (err) {
       alert('Ошибка импорта: ' + (err as Error).message);
+    } finally {
+      // Сброс input'а чтобы можно было импортировать тот же файл снова
+      (e.target as HTMLInputElement).value = '';
     }
   };
 
   const filtered = hunters.filter(h => {
     const query = search.toLowerCase();
-    const ticket = `${h.series}№${h.number}`;
+    const ticket = `${h.series}№${h.number}`.toLowerCase();
     const date = new Date(h.issueDate).toLocaleDateString('ru-RU');
-    return (
-      h.fullName.toLowerCase().includes(query) ||
-      ticket.toLowerCase().includes(query) ||
-      date.includes(query)
-    );
+    return h.fullName.toLowerCase().includes(query) || ticket.includes(query) || date.includes(query);
   });
 
   return (
@@ -144,7 +148,7 @@ const UserManager = () => {
         <button className="config-btn" onClick={() => setShowConfig(true)}>Настройки печати</button>
       </div>
 
-      {showConfig && <ConfigModal onClose={() => setShowConfig(false)} />}
+      {showConfig && <ConfigModal onClose={() => { setShowConfig(false); loadHunters(); }} />}
 
       <div className="actions">
         <input

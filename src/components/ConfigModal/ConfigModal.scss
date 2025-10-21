@@ -22,17 +22,81 @@ $shadow: 0 10px 25px rgba(0,0,0,0.2);
 .config-modal {
   background: $config-modal-bg;
   border-radius: 18px;
-  padding: 30px 25px;
-  width: 400px;
-  max-width: 90%;
+  padding: 32px;
+  width: 720px;            // увеличенная модалка
+  max-width: 95%;
   box-shadow: $shadow;
   position: relative;
   animation: modalPop 0.25s ease-out;
   display: flex;
   flex-direction: column;
+  gap: 18px;
+.menu-wrapper {
+  position: absolute;
+  top: 12px;
+  right: 56px; /* подстрой по необходимости — сдвигает влево от крестика */
+  z-index: 1100; /* выше, чем фон модалки */
+  display: inline-block;
+}
 
+/* Сам кружок/трёточка */
+.menu-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: #6b7280;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, transform 0.08s;
+  padding: 0;
+
+  &:hover {
+    background: rgba(0,0,0,0.04);
+    color: #111827;
+    transform: translateY(-1px);
+  }
+}
+
+/* выпадающее меню — абсолютное, не влияет на layout */
+.menu-dropdown {
+  position: absolute;
+  top: 44px; /* подстраиваем относительно кнопки */
+  right: 0;
+  background: #fff;
+  border: 1px solid #e6edf6;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+  min-width: 200px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* элементы меню */
+.menu-item {
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 14px;
+  color: #243447;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s;
+
+  &:hover {
+    background: rgba(74,144,226,0.08);
+  }
+}
   h2 {
-    margin: 0 0 25px 0;
+    margin: 0 0 8px 0;
     font-size: 22px;
     text-align: center;
     color: #1f2937;
@@ -41,26 +105,167 @@ $shadow: 0 10px 25px rgba(0,0,0,0.2);
   .field {
     display: flex;
     flex-direction: column;
-    margin-bottom: 18px;
+    margin-bottom: 12px;
 
     label {
-      font-weight: 500;
-      margin-bottom: 6px;
+      font-weight: 600;
+      margin-bottom: 8px;
       color: #374151;
       font-size: 14px;
     }
 
-    input {
+    input, textarea {
       padding: 10px 12px;
       border-radius: 10px;
       border: 1px solid $input-border;
       font-size: 14px;
-      transition: all 0.25s;
+      transition: all 0.20s;
 
       &:focus {
         border-color: $input-focus;
-        box-shadow: 0 0 6px rgba(74,144,226,0.25);
+        box-shadow: 0 0 6px rgba(74,144,226,0.18);
         outline: none;
+      }
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 64px;
+      max-height: 220px;
+    }
+  }
+
+  .groups-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+
+    h3 {
+      margin: 0;
+      font-size: 16px;
+      color: #111827;
+    }
+
+    .groups-actions button {
+      background: transparent;
+      border: 1px solid $input-border;
+      padding: 8px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.18s;
+      font-weight: 600;
+      color: #111827;
+
+      &:hover {
+        border-color: $input-focus;
+        transform: translateY(-2px);
+      }
+    }
+  }
+
+  .group-form {
+    background: #f8fafc;
+    border: 1px solid #e6eef7;
+    padding: 14px;
+    border-radius: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+
+    label { font-size: 13px; font-weight: 600; color: #374151; }
+
+    .date-row, .limit-row {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+
+      label {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        font-weight: 500;
+
+        input { margin-top: 6px; }
+      }
+    }
+
+    .group-form-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+
+      button {
+        padding: 8px 12px;
+        border-radius: 10px;
+        border: none;
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      .save {
+        background: $primary-color;
+        color: #fff;
+      }
+      .cancel {
+        background: #fff;
+        border: 1px solid $input-border;
+        color: #111827;
+      }
+    }
+  }
+
+  .groups-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 200px;
+    overflow: auto;
+    padding-right: 6px;
+
+    .muted {
+      color: #6b7280;
+      font-style: italic;
+    }
+
+    .group-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: #ffffff;
+      border: 1px solid #eef2f7;
+
+      .group-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        strong { font-size: 14px; color: #111827; }
+        .group-meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
+      }
+
+      .group-controls {
+        display: flex;
+        gap: 8px;
+
+        button {
+          width: 36px;
+          height: 36px;
+          border-radius: 8px;
+          border: none;
+          cursor: pointer;
+          background: #f3f4f6;
+          display: grid;
+          place-items: center;
+          transition: all 0.14s;
+          font-size: 14px;
+
+          &:hover { transform: translateY(-2px); background: #eef2ff; }
+        }
       }
     }
   }
@@ -69,7 +274,7 @@ $shadow: 0 10px 25px rgba(0,0,0,0.2);
     display: flex;
     justify-content: flex-end;
     gap: 12px;
-    margin-top: 20px;
+    margin-top: 6px;
 
     button {
       padding: 10px 16px;
@@ -82,7 +287,7 @@ $shadow: 0 10px 25px rgba(0,0,0,0.2);
 
       &:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
       }
 
       &.save {
@@ -90,7 +295,7 @@ $shadow: 0 10px 25px rgba(0,0,0,0.2);
         color: #fff;
 
         &:hover {
-          background: darken($primary-color, 10%);
+          background: darken($primary-color, 6%);
         }
       }
 
@@ -99,7 +304,7 @@ $shadow: 0 10px 25px rgba(0,0,0,0.2);
         color: #fff;
 
         &:hover {
-          background: darken($cancel-color, 10%);
+          background: darken($cancel-color, 6%);
         }
       }
     }
@@ -107,8 +312,8 @@ $shadow: 0 10px 25px rgba(0,0,0,0.2);
 
   .close-btn {
     position: absolute;
-    top: 12px;
-    right: 16px;
+    top: 14px;
+    right: 18px;
     font-size: 22px;
     font-weight: bold;
     color: #6b7280;
@@ -126,7 +331,7 @@ $shadow: 0 10px 25px rgba(0,0,0,0.2);
 @keyframes modalPop {
   from {
     opacity: 0;
-    transform: scale(0.95);
+    transform: scale(0.98);
   }
   to {
     opacity: 1;
@@ -140,18 +345,11 @@ $shadow: 0 10px 25px rgba(0,0,0,0.2);
 }
 
 /* Адаптив */
-@media (max-width: 480px) {
+@media (max-width: 880px) {
   .config-modal {
-    width: 90%;
-    padding: 20px 15px;
-
-    h2 { font-size: 20px; }
-
-    .buttons {
-      flex-direction: column;
-      gap: 10px;
-
-      button { width: 100%; }
-    }
+    width: 96%;
+    padding: 20px;
+    .group-form { grid-template-columns: 1fr; }
   }
+  .config-modal .groups-list { max-height: 180px; }
 }

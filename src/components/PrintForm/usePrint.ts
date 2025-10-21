@@ -14,6 +14,7 @@ export interface PrintPositions {
     organizationName: { x: number; y: number };
     huntingPlace: { x: number; y: number };
     backIssueDate: { x: number; yDay: number; yMonth: number; yYear: number };
+    huntType: { x:number; y:number};
     resources: {
         resource: { x: number; y: number };
         dateFrom: { x: number; y: number };
@@ -77,6 +78,7 @@ export const generatePdf = async ({
     // Данные из конфига / формы
     drawDouble(form.organizationName || '', coords.organizationName.x, coords.organizationName.y);
     drawDouble(form.huntingPlace || '', coords.huntingPlace.x, coords.huntingPlace.y);
+    drawDouble(form.huntType || '', coords.huntType.x, coords.huntType.y);
 
 
     // Ресурсы
