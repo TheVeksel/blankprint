@@ -62,9 +62,7 @@ const UserManager = () => {
   };
 
   const handleEditChange = (id: number, key: keyof HunterForm, value: string) => {
-    setHunters(prev =>
-      prev.map(h => (h.id === id ? { ...h, [key]: value } : h))
-    );
+    setHunters(prev => prev.map(h => (h.id === id ? { ...h, [key]: value } : h)));
   };
 
   const handleSave = async (hunter: HunterForm) => {
@@ -73,11 +71,44 @@ const UserManager = () => {
     loadHunters();
   };
 
+  const handleExport = () => {
+    const dataStr = JSON.stringify(hunters, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'hunters_backup.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data: HunterForm[] = JSON.parse(text);
+      if (!Array.isArray(data)) throw new Error('Неверный формат файла');
+      await clearHunters();
+      for (const hunter of data) {
+        await addHunter(hunter);
+      }
+      loadHunters();
+      alert('Импорт завершён успешно');
+    } catch (err) {
+      alert('Ошибка импорта: ' + (err as Error).message);
+    }
+  };
+
   const filtered = hunters.filter(h => {
     const query = search.toLowerCase();
     const ticket = `${h.series}№${h.number}`;
     const date = new Date(h.issueDate).toLocaleDateString('ru-RU');
-    return h.fullName.toLowerCase().includes(query) || ticket.toLowerCase().includes(query) || date.includes(query);
+    return (
+      h.fullName.toLowerCase().includes(query) ||
+      ticket.toLowerCase().includes(query) ||
+      date.includes(query)
+    );
   });
 
   return (
@@ -123,6 +154,19 @@ const UserManager = () => {
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
+
+        <div className="import-export">
+          <button onClick={handleExport}>📤 Экспорт JSON</button>
+          <label className="import-label">
+            📥 Импорт JSON
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleImport}
+              style={{ display: 'none' }}
+            />
+          </label>
+        </div>
       </div>
 
       <ul className="user-list">
@@ -155,7 +199,6 @@ const UserManager = () => {
                   <button className="cancel" onClick={() => setEditingId(null)}>✖</button>
                 </div>
               </div>
-
             ) : (
               <div className="info" onClick={() => navigate(`/print/${h.id}`)}>
                 <strong>{h.fullName}</strong>
