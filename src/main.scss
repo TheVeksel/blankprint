@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@400;500;600;700&display=swap');
+
+body {
+  font-family: 'Lexend Deca', sans-serif;
+  background-color: #f7f8fc; // мягкий светлый фон для всей аппы
+  color: #333;
+  margin: 0;
+  padding: 0;
+}
+input, textarea, select, button {
+  font-family: 'Lexend Deca', sans-serif;
+}
+* {
+  box-sizing: border-box;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  color: #222;
+  margin: 0px;
+}
+
+button {
+  font-family: 'Lexend Deca', sans-serif;
+}

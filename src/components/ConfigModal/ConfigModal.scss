@@ -1,0 +1,157 @@
+$config-modal-bg: #ffffff;
+$primary-color: #4a90e2;  // для Save
+$cancel-color: #f87171;   // для Cancel
+$input-border: #cbd5e1;
+$input-focus: #4a90e2;
+$shadow: 0 10px 25px rgba(0,0,0,0.2);
+
+.config-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: backdropFade 0.25s ease-out;
+}
+
+.config-modal {
+  background: $config-modal-bg;
+  border-radius: 18px;
+  padding: 30px 25px;
+  width: 400px;
+  max-width: 90%;
+  box-shadow: $shadow;
+  position: relative;
+  animation: modalPop 0.25s ease-out;
+  display: flex;
+  flex-direction: column;
+
+  h2 {
+    margin: 0 0 25px 0;
+    font-size: 22px;
+    text-align: center;
+    color: #1f2937;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 18px;
+
+    label {
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: #374151;
+      font-size: 14px;
+    }
+
+    input {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid $input-border;
+      font-size: 14px;
+      transition: all 0.25s;
+
+      &:focus {
+        border-color: $input-focus;
+        box-shadow: 0 0 6px rgba(74,144,226,0.25);
+        outline: none;
+      }
+    }
+  }
+
+  .buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+
+    button {
+      padding: 10px 16px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.25s, transform 0.2s;
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      }
+
+      &.save {
+        background: $primary-color;
+        color: #fff;
+
+        &:hover {
+          background: darken($primary-color, 10%);
+        }
+      }
+
+      &.cancel {
+        background: $cancel-color;
+        color: #fff;
+
+        &:hover {
+          background: darken($cancel-color, 10%);
+        }
+      }
+    }
+  }
+
+  .close-btn {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    font-size: 22px;
+    font-weight: bold;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.25s;
+
+    &:hover {
+      color: #111827;
+      transform: scale(1.1);
+    }
+  }
+}
+
+/* Анимации появления */
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes backdropFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Адаптив */
+@media (max-width: 480px) {
+  .config-modal {
+    width: 90%;
+    padding: 20px 15px;
+
+    h2 { font-size: 20px; }
+
+    .buttons {
+      flex-direction: column;
+      gap: 10px;
+
+      button { width: 100%; }
+    }
+  }
+}
