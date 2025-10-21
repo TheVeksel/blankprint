@@ -66,15 +66,15 @@ const PrintForm = () => {
         hunterIssueDate: { x: 524, yDay: 120, yMonth: 150, yYear: 255 },
         issueDate: { x: 120, yDay: 660, yMonth: 680, yYear: 700 },
         issuedBy: { x: 37, y: 245 },
-        organizationName: { x: 55, y: 20 },
-        huntingPlace: { x: 353, y: 70 },
+        organizationName: { x: 52, y: 20 },
+        huntingPlace: { x: 351, y: 70 },
         backIssueDate: { x: 68, yDay: 262, yMonth: 285, yYear: 393 },
         resources: data.resources.map((_, i) => ({
-            resource: { x: 178 + i * 17, y: 40 },
-            dateFrom: { x: 178 + i * 17, y: 143 },
-            dateTo: { x: 178 + i * 17, y: 190 },
-            dailyLimit: { x: 178 + i * 17, y: 250 },
-            seasonLimit: { x: 178 + i * 17, y: 295 },
+            resource: { x: 175 + i * 17, y: 40 },
+            dateFrom: { x: 176 + i * 17, y: 143 },
+            dateTo: { x: 176 + i * 17, y: 190 },
+            dailyLimit: { x: 176 + i * 17, y: 250 },
+            seasonLimit: { x: 176 + i * 17, y: 295 },
         })),
     });
 
