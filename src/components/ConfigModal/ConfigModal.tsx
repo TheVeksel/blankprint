@@ -12,6 +12,7 @@ export interface SavedGroup {
   dateTo: string;   // 'YYYY-MM-DD'
   dailyLimit: string;
   seasonLimit: string;
+  blankType: 'Yellow' | 'Pink' | 'Blue';
 }
 
 export const configFields: { key: keyof PrintConfig; label: string }[] = [
@@ -59,6 +60,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
   const [gDateTo, setGDateTo] = useState('2026-02-28');
   const [gDailyLimit, setGDailyLimit] = useState('б/о');
   const [gSeasonLimit, setGSeasonLimit] = useState('б/о');
+  const [gBlankType, setGBlankType] = useState<'Yellow'|'Pink'|'Blue'>('Yellow');
 
   // menu (three dots) state & file input ref
   const [menuOpen, setMenuOpen] = useState(false);
@@ -115,6 +117,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
         dateTo: gDateTo,
         dailyLimit: gDailyLimit,
         seasonLimit: gSeasonLimit,
+        blankType: gBlankType,
       };
       const newGroups = groups.map((g) => (g.id === editing.id ? updated : g));
       setGroups(newGroups);
@@ -127,6 +130,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
         dateTo: gDateTo,
         dailyLimit: gDailyLimit,
         seasonLimit: gSeasonLimit,
+        blankType: gBlankType,
       };
       setGroups([newGroup, ...groups]);
     }
@@ -139,6 +143,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
     setGDateTo('2026-02-28');
     setGDailyLimit('б/о');
     setGSeasonLimit('б/о');
+    setGBlankType('Yellow');
     setShowGroupForm(false);
   };
 
@@ -150,6 +155,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
     setGDateTo(g.dateTo);
     setGDailyLimit(g.dailyLimit);
     setGSeasonLimit(g.seasonLimit);
+    setGBlankType(g.blankType || 'Yellow');
     setShowGroupForm(true);
   };
 
@@ -285,6 +291,16 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
                 <label>Норма/сезон: <input value={gSeasonLimit} onChange={(e) => setGSeasonLimit(e.target.value)} /></label>
               </div>
 
+              <div className="limit-row">
+                <label>Тип бланка:
+                  <select value={gBlankType} onChange={(e) => setGBlankType(e.target.value as any)}>
+                    <option value="Yellow">Жёлтый</option>
+                    <option value="Pink">Розовый</option>
+                    <option value="Blue">Синий</option>
+                  </select>
+                </label>
+              </div>
+
               <div className="group-form-actions">
                 <button type="button" onClick={saveGroup}>{editing ? 'Сохранить изменения' : 'Создать группу'}</button>
                 <button type="button" onClick={() => { setShowGroupForm(false); setEditing(null); }}>Отмена</button>
@@ -297,7 +313,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
               <div className="group-row" key={g.id}>
                 <div className="group-info">
                   <strong>{g.name}</strong> — {g.animals.length} шт.
-                  <div className="group-meta"> {g.dateFrom} → {g.dateTo} · {g.dailyLimit}/{g.seasonLimit}</div>
+                  <div className="group-meta"> {g.dateFrom} → {g.dateTo} · {g.dailyLimit}/{g.seasonLimit} · <em>{g.blankType}</em></div>
                 </div>
                 <div className="group-controls">
                   <button type="button" onClick={() => editGroup(g)}>✎</button>

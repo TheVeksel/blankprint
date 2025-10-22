@@ -1,10 +1,11 @@
 // src/components/PrintForm/PrintForm.tsx
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { getAllHunters } from '../../db';
 import { generatePdf } from './usePrint';
 import { getConfig, type PrintConfig } from '../../utils/config';
+import { getCoordsForBlank, type BlankType } from '../../utils/coords';
 import './PrintForm.scss';
 import { configFields, type SavedGroup } from '../ConfigModal/ConfigModal';
 
@@ -28,8 +29,16 @@ const PrintForm: React.FC = () => {
   const navigate = useNavigate();
   const [hunter, setHunter] = useState<any>(null);
 
-  const cfgRaw = getConfig() as PrintConfig & { savedGroups?: SavedGroup[] };
+  const cfgRaw = useMemo(
+    () => getConfig() as PrintConfig & { savedGroups?: SavedGroup[] },
+    []
+  );
   const savedGroups = cfgRaw.savedGroups || [];
+
+  // default blank type: if there are saved groups, use the first group's blankType, otherwise Yellow
+  const [blankType, setBlankType] = useState<BlankType>(
+    (savedGroups[0]?.blankType as BlankType) || 'Yellow'
+  );
 
   const { register, control, handleSubmit, reset, setValue } = useForm<PrintFormValues>({
     defaultValues: {
@@ -51,25 +60,34 @@ const PrintForm: React.FC = () => {
   const [groupInput, setGroupInput] = useState('');
 
   useEffect(() => {
+    let mounted = true;
     getAllHunters().then((list) => {
+      if (!mounted) return;
       const h = list.find((x) => x.id === Number(id));
       if (h) {
         setHunter(h);
-        reset((prev) => ({
-          ...prev,
+
+        const defaults: PrintFormValues = {
           organizationName: cfgRaw.organizationName || '',
           huntingPlace: cfgRaw.huntingPlace || '',
           issuedByName: cfgRaw.issuedByName || '',
           huntType: (cfgRaw as any).huntType || '',
-          resources: prev.resources && prev.resources.length ? prev.resources : [{ resource: '', dateFrom: '', dateTo: '', dailyLimit: '', seasonLimit: '' }],
+          resources:
+            // keep existing resources if any, otherwise a single empty row
+            [{ resource: '', dateFrom: '', dateTo: '', dailyLimit: '', seasonLimit: '' }],
           issueDate: new Date().toISOString().substring(0, 10),
-        }));
+        };
+
+        reset(defaults);
       } else {
         navigate('/');
       }
     });
+    return () => {
+      mounted = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigate, id]);
+  }, [navigate, id, reset]);
 
   const groupToResources = useCallback((g: SavedGroup): ResourceGroup[] => {
     const max = Math.min(g.animals.length, MAX_RESOURCES);
@@ -89,6 +107,8 @@ const PrintForm: React.FC = () => {
 
     if (found) {
       resourcesArr = groupToResources(found);
+      // set blank type from the saved group
+      setBlankType(found.blankType as BlankType);
     } else {
       const animals = input
         .split(/[,;\n]/)
@@ -102,6 +122,7 @@ const PrintForm: React.FC = () => {
         if (!window.confirm(`Ввод содержит ${animals.length} животных, максимум ${MAX_RESOURCES}. Обрезать до ${MAX_RESOURCES}?`)) return;
       }
       const truncated = animals.slice(0, MAX_RESOURCES);
+      // default dates for manual entry groups (you can change)
       const dateFrom = '2025-09-15';
       const dateTo = '2026-02-28';
       resourcesArr = truncated.map((a) => ({
@@ -111,36 +132,24 @@ const PrintForm: React.FC = () => {
         dailyLimit: 'б/о',
         seasonLimit: 'б/о',
       }));
+      // for manual input, fallback to Yellow (or keep previous — choose fallback)
+      setBlankType('Yellow');
     }
 
-    // обновляем useFieldArray
+    // обновляем useFieldArray и форму
     replace(resourcesArr);
     setValue('resources', resourcesArr);
   };
 
-  const coords = (data: PrintFormValues) => ({
-    fullName: { x: 455, y: 95 },
-    hunterTicketSeries: { x: 498, y: 115 },
-    hunterTicketNumber: { x: 498, y: 165 },
-    hunterIssueDate: { x: 521, yDay: 120, yMonth: 150, yYear: 255 },
-    issueDate: { x: 120, yDay: 660, yMonth: 680, yYear: 700 },
-    issuedBy: { x: 31, y: 245 },
-    organizationName: { x: 45, y: 20 },
-    huntingPlace: { x: 346, y: 70 },
-    backIssueDate: { x: 60, yDay: 262, yMonth: 285, yYear: 393 },
-    huntType: {x:540, y:55},
-    resources: data.resources.map((_, i) => ({
-      resource: { x: 171 + i * 17, y: 40 },
-      dateFrom: { x: 173 + i * 17, y: 143 },
-      dateTo: { x: 173 + i * 17, y: 190 },
-      dailyLimit: { x: 173 + i * 17, y: 250 },
-      seasonLimit: { x: 173 + i * 17, y: 295 },
-    })),
-  });
+  // local coords removed; use getCoordsForBlank(blankType)(data) below
 
   const onSubmit = (data: PrintFormValues) => {
     if (!hunter) return;
-    generatePdf({ hunter, form: data, coords: coords(data) });
+    generatePdf({
+      hunter,
+      form: data,
+      coords: getCoordsForBlank(blankType)(data),
+    });
   };
 
   const onPrint = async (data: PrintFormValues) => {
@@ -160,7 +169,7 @@ const PrintForm: React.FC = () => {
     const pdfBytes = await generatePdf({
       hunter,
       form: data,
-      coords: coords(data),
+      coords: getCoordsForBlank(blankType)(data),
       returnBytes: true,
     });
     if (!pdfBytes) { document.body.removeChild(iframe); return; }
@@ -215,7 +224,7 @@ const PrintForm: React.FC = () => {
           {configFields.map(f => (
             <label key={String(f.key)}>
               {f.label}:
-              <input {...register(f.key)} defaultValue={(cfgRaw as any)[f.key]} />
+              <input {...register(f.key as any)} />
             </label>
           ))}
         </div>
@@ -237,13 +246,13 @@ const PrintForm: React.FC = () => {
 
         {fields.map((field, index) => (
           <div key={field.id} className="resource-group">
-            <input {...register(`resources.${index}.resource` as const)} placeholder="Вид ресурса" defaultValue={field.resource} />
+            <input {...register(`resources.${index}.resource` as const)} placeholder="Вид ресурса" />
             <div className="dates">
-              <label>С: <input type="date" {...register(`resources.${index}.dateFrom` as const)} defaultValue={field.dateFrom} /></label>
-              <label>По: <input type="date" {...register(`resources.${index}.dateTo` as const)} defaultValue={field.dateTo} /></label>
+              <label>С: <input type="date" {...register(`resources.${index}.dateFrom` as const)} /></label>
+              <label>По: <input type="date" {...register(`resources.${index}.dateTo` as const)} /></label>
             </div>
-            <input {...register(`resources.${index}.dailyLimit` as const)} placeholder="Норма за день" defaultValue={field.dailyLimit} />
-            <input {...register(`resources.${index}.seasonLimit` as const)} placeholder="Норма за сезон" defaultValue={field.seasonLimit} />
+            <input {...register(`resources.${index}.dailyLimit` as const)} placeholder="Норма за день" />
+            <input {...register(`resources.${index}.seasonLimit` as const)} placeholder="Норма за сезон" />
             {index > 0 && (
               <button type="button" className="remove" onClick={() => remove(index)}>Удалить</button>
             )}
