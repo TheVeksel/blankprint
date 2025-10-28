@@ -16,7 +16,16 @@ interface ResourceGroup {
   dailyLimit: string;
   seasonLimit: string;
 }
-
+export interface BlankPrint {
+  voucherNumber: string
+    fullName: string;
+    hunterTicketSeries: string;
+    hunterTicketNumber: string;
+    hunterIssueDate: string;
+    issueDate: string;
+    issuedBy: string;
+    resources: ResourceGroup[];
+}
 export interface PrintFormValues extends PrintConfig {
   resources: ResourceGroup[];
   issueDate: string;

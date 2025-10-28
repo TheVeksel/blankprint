@@ -1,12 +1,11 @@
 // src/utils/coords.ts
-import type { PrintFormValues } from '../components/PrintForm/PrintForm';
+import type { BlankPrint, PrintFormValues } from '../components/PrintForm/PrintForm';
+import type { PrintPositions } from '../components/PrintForm/usePrint';
 
-// Возвращаемая структура — совпадает с тем, что ожидает usePrint.generatePdf
-export type BlankType = 'Yellow' | 'Pink' | 'Blue';
+export type BlankType = 'Yellow' | 'Pink' | 'Blue' | 'Voucher';
 
-export const getCoordsForBlank = (blank: BlankType) => (data: PrintFormValues) => {
-  // === ЖЁЛТЫЙ (пример) ===
-  const yellow = {
+export const getCoordsForBlank = (blank: BlankType) => (data: PrintFormValues | BlankPrint): PrintPositions => {
+  const yellow: PrintPositions = {
     fullName: { x: 455, y: 95 },
     hunterTicketSeries: { x: 498, y: 115 },
     hunterTicketNumber: { x: 498, y: 165 },
@@ -26,7 +25,8 @@ export const getCoordsForBlank = (blank: BlankType) => (data: PrintFormValues) =
     })),
   };
 
-  const pink = {fullName: { x: 457, y: 95 },
+  const pink: PrintPositions = {
+    fullName: { x: 457, y: 95 },
     hunterTicketSeries: { x: 501, y: 115 },
     hunterTicketNumber: { x: 501, y: 165 },
     hunterIssueDate: { x: 523, yDay: 120, yMonth: 150, yYear: 255 },
@@ -42,11 +42,30 @@ export const getCoordsForBlank = (blank: BlankType) => (data: PrintFormValues) =
       dateTo: { x: 189 + i * 16, y: 190 },
       dailyLimit: { x: 189 + i * 16, y: 250 },
       seasonLimit: { x: 189 + i * 16, y: 295 },
-    })),};
+    })),
+  };
 
-  const blue = { ...yellow };
+  const blue: PrintPositions = { ...yellow };
+
+  const voucher: PrintPositions = {
+    voucherNumber: { x: 30, y: 300 },
+    fullName: { x: 455, y: 95 },
+    hunterTicketSeries: { x: 498, y: 115 },
+    hunterTicketNumber: { x: 498, y: 165 },
+    hunterIssueDate: { x: 521, yDay: 120, yMonth: 150, yYear: 255 },
+    issueDate: { x: 120, yDay: 660, yMonth: 680, yYear: 700 },
+    issuedBy: { x: 31, y: 245 },
+    // organizationName / huntingPlace / backIssueDate / huntType не обязательны для ваучера
+    // resources — объект minDateFrom / maxDateTo
+    resources: {
+      minDateFrom: { x: 173, y: 143 },
+      maxDateTo: { x: 173, y: 190 },
+    },
+  };
 
   switch (blank) {
+    case 'Voucher':
+      return voucher;
     case 'Pink':
       return pink;
     case 'Blue':
