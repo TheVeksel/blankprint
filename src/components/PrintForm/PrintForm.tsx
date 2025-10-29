@@ -1,4 +1,3 @@
-// src/components/PrintForm/PrintForm.tsx
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -16,19 +15,25 @@ interface ResourceGroup {
   dailyLimit: string;
   seasonLimit: string;
 }
+
 export interface BlankPrint {
-  voucherNumber: string
-    fullName: string;
-    hunterTicketSeries: string;
-    hunterTicketNumber: string;
-    hunterIssueDate: string;
-    issueDate: string;
-    issuedBy: string;
-    resources: ResourceGroup[];
+  voucherNumber: string;
+  fullName: string;
+  hunterTicketSeries: string;
+  hunterTicketNumber: string;
+  hunterIssueDate: string;
+  issueDate: string;
+  issuedBy: string;
+  resources: ResourceGroup[];
 }
+
 export interface PrintFormValues extends PrintConfig {
   resources: ResourceGroup[];
   issueDate: string;
+  // voucher other fields (dates are taken from resources[0])
+  voucherNumber: string;
+  voucherNote: string;
+  voucherPermissionNumber: string;
 }
 
 const MAX_RESOURCES = 10;
@@ -57,6 +62,9 @@ const PrintForm: React.FC = () => {
       huntType: (cfgRaw as any).huntType || '',
       resources: [{ resource: '', dateFrom: '', dateTo: '', dailyLimit: '', seasonLimit: '' }],
       issueDate: new Date().toISOString().substring(0, 10),
+      voucherNumber: '',
+      voucherNote: '',
+      voucherPermissionNumber: '',
     },
   });
 
@@ -85,6 +93,9 @@ const PrintForm: React.FC = () => {
             // keep existing resources if any, otherwise a single empty row
             [{ resource: '', dateFrom: '', dateTo: '', dailyLimit: '', seasonLimit: '' }],
           issueDate: new Date().toISOString().substring(0, 10),
+          voucherNumber: '',
+          voucherNote: '',
+          voucherPermissionNumber: '',
         };
 
         reset(defaults);
@@ -116,8 +127,9 @@ const PrintForm: React.FC = () => {
 
     if (found) {
       resourcesArr = groupToResources(found);
-      // set blank type from the saved group
-      setBlankType(found.blankType as BlankType);
+      // set blank type from the saved group — guard against undefined
+      const bt = (found.blankType as BlankType) || 'Yellow';
+      setBlankType(bt);
     } else {
       const animals = input
         .split(/[,;\n]/)
@@ -150,19 +162,24 @@ const PrintForm: React.FC = () => {
     setValue('resources', resourcesArr);
   };
 
-  // local coords removed; use getCoordsForBlank(blankType)(data) below
-
+  // We will derive voucherFrom/voucherTo from resources[0].dateFrom/dateTo when printing voucher
   const onSubmit = (data: PrintFormValues) => {
     if (!hunter) return;
+    const effectiveBlank: BlankType = (blankType as BlankType) || 'Yellow';
+    const coords = getCoordsForBlank(effectiveBlank)(data);
+    console.log('[onSubmit] effectiveBlank:', effectiveBlank, coords);
     generatePdf({
       hunter,
       form: data,
-      coords: getCoordsForBlank(blankType)(data),
+      coords,
     });
   };
 
   const onPrint = async (data: PrintFormValues) => {
     if (!hunter) return;
+
+    const effectiveBlank: BlankType = (blankType as BlankType) || 'Yellow';
+    const coords = getCoordsForBlank(effectiveBlank)(data);
 
     const iframe = document.createElement('iframe');
     Object.assign(iframe.style, {
@@ -178,7 +195,7 @@ const PrintForm: React.FC = () => {
     const pdfBytes = await generatePdf({
       hunter,
       form: data,
-      coords: getCoordsForBlank(blankType)(data),
+      coords,
       returnBytes: true,
     });
     if (!pdfBytes) { document.body.removeChild(iframe); return; }
@@ -195,6 +212,60 @@ const PrintForm: React.FC = () => {
     };
 
     // автоматически убираем iframe и освобождаем Blob через 5 минут
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      if (document.body.contains(iframe)) document.body.removeChild(iframe);
+      console.log('DEBUG: iframe and Blob cleaned up after 5 minutes');
+    }, 300_000);
+  };
+
+  // new: print voucher — uses voucher-related fields and voucher dates taken from resources[0]
+  const onPrintVoucher = async (data: PrintFormValues) => {
+    if (!hunter) return;
+
+    // derive voucherFrom / voucherTo from resources[0] (fallback to issueDate)
+    const r0 = (data.resources && data.resources[0]) || null;
+    const voucherFrom = r0?.dateFrom || data.issueDate;
+    const voucherTo = r0?.dateTo || data.issueDate;
+
+    // build a form object that includes voucher fields so usePrint can use them
+    const formForVoucher = {
+      ...data,
+      voucherFrom,
+      voucherTo,
+    } as any;
+
+    const voucherCoords = getCoordsForBlank('Voucher')(data);
+
+    const iframe = document.createElement('iframe');
+    Object.assign(iframe.style, {
+      position: 'fixed',
+      left: '-2000px',
+      top: '0',
+      width: '1px',
+      height: '1px',
+    });
+    document.body.appendChild(iframe);
+
+    const pdfBytes = await generatePdf({
+      hunter,
+      form: formForVoucher,
+      coords: voucherCoords,
+      returnBytes: true,
+    });
+    if (!pdfBytes) { document.body.removeChild(iframe); return; }
+
+    const bytes = Uint8Array.from(pdfBytes as any);
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+
+    iframe.src = url;
+
+    iframe.onload = () => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    };
+
     setTimeout(() => {
       URL.revokeObjectURL(url);
       if (document.body.contains(iframe)) document.body.removeChild(iframe);
@@ -281,6 +352,38 @@ const PrintForm: React.FC = () => {
           <button type="button" className="print" onClick={handleSubmit(onPrint)}>Печать</button>
           <button type="submit" className="submit">Сформировать бланк</button>
         </div>
+
+        {/* VOUCHER SECTION: classes aligned with resource fields */}
+        <h3>Печать путевки</h3>
+
+        <div className="resource-group">
+          <label>
+            Номер путевки:
+            <input type="text" {...register('voucherNumber')} />
+          </label>
+
+          <div className="dates">
+            {/* Даты путёвки берутся прямо из полей групп — resources[0] */}
+            <label>С: <input type="date" {...register('resources.0.dateFrom' as const)} /></label>
+            <label>По: <input type="date" {...register('resources.0.dateTo' as const)} /></label>
+          </div>
+
+          <label>
+            Особая отметка:
+            <input type="text" {...register('voucherNote')} />
+          </label>
+
+          <label>
+            Предоставление охоты по разрешению №:
+            <input type="text" {...register('voucherPermissionNumber')} />
+          </label>
+
+          <div className="group-controls voucher-actions">
+            <button type="button" className="submit" onClick={handleSubmit(onPrintVoucher)}>Распечатать путёвку</button>
+          </div>
+        </div>
+        {/* END VOUCHER */}
+
       </form>
     </div>
   );
