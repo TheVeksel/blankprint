@@ -88,7 +88,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
 
   const onSubmit = (data: PrintConfig) => {
     // save cfg + groups
-    const merged = { ...data, savedGroups: groups };
+    const merged: PrintConfig & { savedGroups?: SavedGroup[] } = { ...data, savedGroups: groups };
     persistConfig(merged);
     onClose();
   };
@@ -261,6 +261,17 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
 
           <hr />
 
+          {/* --- Путёвка (новое) --- */}
+          <div className="voucher-block">
+            <h3>Путёвка</h3>
+            <div className="field">
+              <label>Должность:</label>
+              <input {...register('jobTitle')} placeholder="" />
+            </div>
+          </div>
+
+          <hr />
+
           <div className="groups-header">
             <h3>Группы ресурсов</h3>
             <div className="groups-actions">
@@ -293,7 +304,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
 
               <div className="limit-row">
                 <label>Тип бланка:
-                  <select value={gBlankType} onChange={(e) => setGBlankType(e.target.value as any)}>
+                  <select value={gBlankType} onChange={(e) => setGBlankType(e.target.value as 'Yellow'|'Pink'|'Blue')}>
                     <option value="Yellow">Жёлтый</option>
                     <option value="Pink">Розовый</option>
                     <option value="Blue">Синий</option>

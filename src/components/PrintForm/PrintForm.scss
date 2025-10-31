@@ -5,271 +5,336 @@ $card-bg: #f5f7fb;
 $input-border: #cfd5e0;
 $input-focus: #4a90e2;
 $shadow-light: 0 4px 12px rgba(0, 0, 0, 0.08);
+$modal-backdrop: rgba(10, 20, 40, 0.6);
+$muted: #7b8794;
 
 .print-form {
-    max-width: 780px;
-    margin: 50px auto;
-    background: #fff;
-    border-radius: 20px;
-    padding: 32px;
-    box-shadow: $shadow-light;
+  max-width: 780px;
+  margin: 50px auto;
+  background: #fff;
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: $shadow-light;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+
+  .back {
+    background: none;
+    border: none;
+    color: $primary-color;
+    font-size: 16px;
+    cursor: pointer;
+    transition: color 0.2s;
+
+    &:hover {
+      color: darken($primary-color, 15%);
+    }
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 26px;
+    color: #222;
+    margin: 0;
+  }
+
+  /* Блок с данными охотника */
+  .hunter-info {
+    background: $card-bg;
+    padding: 18px;
+    border-radius: 14px;
+    box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.05);
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 8px;
+    margin: 6px 10px;
 
-    .back {
-        background: none;
+    /* строк с кнопкой выбора другого охотника */
+    .hunter-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    h2 {
+      font-size: 20px;
+      margin: 0;
+    }
+
+    .hunter-fields {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    strong {
+      font-size: 16px;
+      color: #222;
+    }
+
+    .ticket,
+    .date {
+      font-size: 14px;
+      color: $muted;
+    }
+  }
+
+  /* кнопка для открытия модалки выбора охотника */
+  .select-hunter-btn {
+    background: linear-gradient(180deg, $primary-color, darken($primary-color, 6%));
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    box-shadow: 0 6px 16px rgba(26,71,219,0.18);
+    transition: transform 0.12s, box-shadow 0.12s;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 26px rgba(26,71,219,0.22);
+    }
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+
+    h2 {
+      font-size: 20px;
+      text-align: center;
+      color: #333;
+    }
+
+    .config-fields,
+    .extra-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 20px;
+
+      label {
+        display: flex;
+        flex-direction: column;
+        font-weight: 600;
+        font-size: 15px;
+        color: #333;
+      }
+
+      input {
+        padding: 8px 12px;
+        margin-top: 8px;
+        border-radius: 8px;
+        border: 1px solid $input-border;
+        font-size: 15px;
+        transition: all 0.18s;
+
+        &:focus {
+          border-color: $input-focus;
+          box-shadow: 0 0 8px rgba(74, 144, 226, 0.12);
+          outline: none;
+        }
+      }
+    }
+
+    .group-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 6px;
+
+      .group-input {
+        flex: 1;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid $input-border;
+        font-size: 14px;
+
+        &:focus {
+          border-color: $input-focus;
+          box-shadow: 0 0 6px rgba(74,144,226,0.18);
+          outline: none;
+        }
+      }
+
+      .apply-group {
+        padding: 10px 14px;
+        border-radius: 10px;
         border: none;
-        color: $primary-color;
-        font-size: 16px;
+        background: $primary-color;
+        color: white;
         cursor: pointer;
-        transition: color 0.2s;
+        font-weight: 700;
+        transition: background 0.18s, transform 0.12s;
 
         &:hover {
-            color: darken($primary-color, 15%);
+          transform: translateY(-2px);
+          background: darken($primary-color, 6%);
         }
+      }
     }
 
-    h1 {
-        text-align: center;
-        font-size: 26px;
-        color: #222;
+    .resource-group {
+      background: $card-bg;
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: transform 0.12s, box-shadow 0.12s;
+
+      &:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 18px rgba(0,0,0,0.04);
+      }
+
+      input {
+        border: 1px solid $input-border;
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 15px;
+
+        &:focus {
+          border-color: $input-focus;
+          box-shadow: 0 0 6px rgba(74, 144, 226, 0.12);
+        }
+      }
+
+      .dates {
+        display: flex;
+        gap: 10px;
+
+        label {
+          flex: 1;
+          font-size: 14px;
+          color: #444;
+        }
+      }
+
+      .remove {
+        align-self: flex-end;
+        background: $danger-color;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 6px 10px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s;
+
+        &:hover {
+          background: darken($danger-color, 10%);
+        }
+      }
     }
 
-    .hunter-info {
-        background: $card-bg;
-        padding: 20px;
-        border-radius: 14px;
-        box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.05);
+    .add {
+      background: $primary-color;
+      color: #fff;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-weight: 500;
+      cursor: pointer;
+      align-self: center;
+      transition: all 0.2s;
+
+      &:hover {
+        background: darken($primary-color, 10%);
+      }
+    }
+
+    .submit {
+      background: $success-color;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+      }
+    }
+
+    .print {
+      background: $primary-color;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 14px rgba(26,71,219,0.12);
+      }
+    }
+
+    .buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 6px;
+    }
+
+    /* Визуальная секция путёвки */
+    .voucher-block {
+      background: linear-gradient(180deg, #ffffff 0%, $card-bg 100%);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 6px 18px rgba(12,20,45,0.03);
+
+      label {
         display: flex;
         flex-direction: column;
         gap: 6px;
-        margin: 10px;
-
-        h2 {
-            font-size: 23px;
-        }
-        strong {
-            font-size: 16px;
-            color: #222;
-        }
-
-        .ticket,
-        .date {
-            font-size: 14px;
-            color: #555;
-        }
-    }
-
-    form {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-
-        h2 {
-            font-size: 20px;
-            text-align: center;
-            color: #333;
-        }
-
-        .config-fields,
-        .extra-fields {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-bottom: 30px;
-
-            label {
-                display: flex;
-                flex-direction: column;
-                font-weight: 600;
-                font-size: 15px;
-                color: #333;
-            }
-
-            input {
-                padding: 8px 12px;
-                margin-top: 10px;
-                border-radius: 8px;
-                border: 1px solid $input-border;
-                font-size: 15px;
-                transition: all 0.2s;
-
-                &:focus {
-                    border-color: $input-focus;
-                    box-shadow: 0 0 6px rgba(74, 144, 226, 0.2);
-                    outline: none;
-                }
-            }
-        }
-.group-row { 
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    margin-bottom: 6px;
-
-    .group-input {
-      flex: 1;
-      padding: 10px 12px;
-      border-radius: 10px;
-      border: 1px solid $input-border;
-      font-size: 14px;
-
-      &:focus {
-        border-color: $input-focus;
-        box-shadow: 0 0 6px rgba(74,144,226,0.18);
-        outline: none;
+        font-weight: 600;
       }
-    }
 
-    .apply-group {
-      padding: 10px 14px;
-      border-radius: 10px;
-      border: none;
-      background: $primary-color;
-      color: white;
-      cursor: pointer;
-      font-weight: 700;
-      transition: background 0.18s, transform 0.12s;
-
-      &:hover {
-        transform: translateY(-2px);
-        background: darken($primary-color, 6%);
+      .voucher-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 8px;
       }
     }
   }
-        .resource-group {
-            background: $card-bg;
-            border-radius: 12px;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            transition: all 0.2s;
 
-            input {
-                border: 1px solid $input-border;
-                border-radius: 8px;
-                padding: 8px 10px;
-                font-size: 15px;
 
-                &:focus {
-                    border-color: $input-focus;
-                    box-shadow: 0 0 6px rgba(74, 144, 226, 0.2);
-                }
-            }
 
-            .dates {
-                display: flex;
-                gap: 10px;
-
-                label {
-                    flex: 1;
-                    font-size: 14px;
-                    color: #444;
-                }
-            }
-
-            .remove {
-                align-self: flex-end;
-                background: $danger-color;
-                color: #fff;
-                border: none;
-                border-radius: 8px;
-                padding: 6px 10px;
-                cursor: pointer;
-                font-weight: 500;
-                transition: all 0.2s;
-
-                &:hover {
-                    background: darken($danger-color, 10%);
-                }
-            }
-        }
-
-        .add {
-            background: $primary-color;
-            color: #fff;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 10px;
-            font-weight: 500;
-            cursor: pointer;
-            align-self: center;
-            transition: all 0.2s;
-
-            &:hover {
-                background: darken($primary-color, 10%);
-            }
-        }
-
-        .submit {
-            background: #36b971;
-            color: #fff;
-            padding: 10px 16px;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-             &:hover {
-                    transform: translateY(-1px);
-                    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-                }
-        }
-
-        .print {
-            background: #1a47db;
-            color: #fff;
-            padding: 10px 16px;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-             &:hover {
-                    transform: translateY(-1px);
-                    box-shadow: 0 4px 10px rgba(0, 225, 255, 0.5);
-                }
-        }
-
-        .buttons {
-            display: block;
-            text-align: center;
-            gap: 12px;
-
-            button {
-                padding: 10px 16px;
-                border-radius: 10px;
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.2s;
-
-                &:hover {
-                    transform: translateY(-1px);
-                    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
-                }
-
-                &.submit {
-                    background: $success-color;
-                    color: #fff;
-                }
-
-                &.print {
-                    background: $primary-color;
-                    color: #fff;
-                }
-            }
-        }
+  /* адаптив */
+  @media (max-width: 900px) {
+    .select-hunter-modal {
+      width: 92%;
     }
 
-    @media (max-width: 500px) {
-        padding: 20px;
-
-        .buttons {
-            flex-direction: column;
-
-            button {
-                width: 100%;
-            }
-        }
+    .hunter-info .hunter-fields {
+      flex-direction: column;
+      gap: 6px;
     }
+  }
+
+  @media (max-width: 500px) {
+    padding: 20px;
+
+    .buttons {
+      flex-direction: column;
+
+      button {
+        width: 100%;
+      }
+    }
+  }
 }

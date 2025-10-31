@@ -269,7 +269,11 @@ $shadow: 0 10px 25px rgba(0,0,0,0.2);
       }
     }
   }
-
+.voucher-block {
+  h3 {
+    text-align: center;
+  }
+}
   .buttons {
     display: flex;
     justify-content: flex-end;
@@ -286,7 +290,7 @@ $shadow: 0 10px 25px rgba(0,0,0,0.2);
       transition: all 0.25s, transform 0.2s;
 
       &:hover {
-        transform: translateY(-2px);
+        transform: translateY(-1px);
         box-shadow: 0 4px 12px rgba(0,0,0,0.08);
       }
 
@@ -295,7 +299,7 @@ $shadow: 0 10px 25px rgba(0,0,0,0.2);
         color: #fff;
 
         &:hover {
-          background: darken($primary-color, 6%);
+          background: #2f69ac;
         }
       }
 
@@ -304,7 +308,7 @@ $shadow: 0 10px 25px rgba(0,0,0,0.2);
         color: #fff;
 
         &:hover {
-          background: darken($cancel-color, 6%);
+          background: #ac4040 ;
         }
       }
     }

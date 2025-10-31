@@ -1,11 +1,10 @@
-import type { BlankPrint, PrintFormValues } from '../components/PrintForm/PrintForm';
+import type { PrintFormValues } from '../components/PrintForm/PrintForm'; 
 import type { PrintPositions } from '../components/PrintForm/usePrint';
 
 export type BlankType = 'Yellow' | 'Pink' | 'Blue' | 'Voucher';
 
-// защитный дефолт: если blank не передан — используем 'Yellow'
-export const getCoordsForBlank = (blank: BlankType = 'Yellow') => (data: PrintFormValues | BlankPrint): PrintPositions => {
- console.log('[getCoordsForBlank] blank:', blank, 'resources length:', Array.isArray(data.resources) ? data.resources.length : 0);
+export const getCoordsForBlank = (blank: BlankType = 'Yellow') => (data: PrintFormValues): PrintPositions => {
+  console.log('[getCoordsForBlank] blank:', blank, 'resources length:', Array.isArray(data.resources) ? data.resources.length : 0);
 
   const yellow: PrintPositions = {
     fullName: { x: 455, y: 95 },
@@ -47,8 +46,6 @@ export const getCoordsForBlank = (blank: BlankType = 'Yellow') => (data: PrintFo
     })),
   };
 
-  // не spread yellow — пересчитываем resources для blue отдельно,
-  // чтобы координаты ресурсов зависели от data.resources
   const blue: PrintPositions = {
     fullName: { x: 455, y: 95 },
     hunterTicketSeries: { x: 498, y: 115 },
@@ -70,18 +67,17 @@ export const getCoordsForBlank = (blank: BlankType = 'Yellow') => (data: PrintFo
   };
 
   const voucher: PrintPositions = {
-    voucherNumber: { x: 30, y: 300 },
-    fullName: { x: 455, y: 95 },
-    hunterTicketSeries: { x: 498, y: 115 },
-    hunterTicketNumber: { x: 498, y: 165 },
-    hunterIssueDate: { x: 521, yDay: 120, yMonth: 150, yYear: 255 },
-    issueDate: { x: 120, yDay: 660, yMonth: 680, yYear: 700 },
-    issuedBy: { x: 31, y: 245 },
-    // organizationName / huntingPlace / backIssueDate / huntType не обязательны для ваучера
-    // resources — объект minDateFrom / maxDateTo
+    voucherNumber: { x: 218, y: 783 },
+    fullName: { x: 67, y: 555 },
+    hunterTicketSeries: { x: 182, y: 543 },
+    hunterTicketNumber: { x: 211, y: 543 },
+    hunterIssueDate: { x: 137, yDay: 531 },
+    issueDate: { x: 231, yDay: 217 },
+    voucherNote: { x: 35, y: 498 },
+    jobTitle: { x: 42, y: 311 },
     resources: {
-      minDateFrom: { x: 173, y: 143 },
-      maxDateTo: { x: 173, y: 190 },
+      minDateFrom: { x: 50, y: 599 },
+      maxDateTo: { x: 240, y: 599 },
     } as any,
   };
 

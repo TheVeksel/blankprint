@@ -1,8 +1,10 @@
+// src/components/PrintForm/PrintForm.tsx
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { getAllHunters } from '../../db';
-import { generatePdf } from './usePrint';
+// Используем напрямую генераторы PDF из usePrint
+import { generateBlankPdf, generateVoucherPdf } from './usePrint';
 import { getConfig, type PrintConfig } from '../../utils/config';
 import { getCoordsForBlank, type BlankType } from '../../utils/coords';
 import './PrintForm.scss';
@@ -16,27 +18,18 @@ interface ResourceGroup {
   seasonLimit: string;
 }
 
-export interface BlankPrint {
-  voucherNumber: string;
-  fullName: string;
-  hunterTicketSeries: string;
-  hunterTicketNumber: string;
-  hunterIssueDate: string;
-  issueDate: string;
-  issuedBy: string;
-  resources: ResourceGroup[];
-}
-
 export interface PrintFormValues extends PrintConfig {
   resources: ResourceGroup[];
   issueDate: string;
-  // voucher other fields (dates are taken from resources[0])
   voucherNumber: string;
   voucherNote: string;
   voucherPermissionNumber: string;
 }
 
 const MAX_RESOURCES = 10;
+
+// ключ для локального сохранения черновика формы
+const DRAFT_KEY = 'print_form_draft';
 
 const PrintForm: React.FC = () => {
   const { id } = useParams();
@@ -49,17 +42,18 @@ const PrintForm: React.FC = () => {
   );
   const savedGroups = cfgRaw.savedGroups || [];
 
-  // default blank type: if there are saved groups, use the first group's blankType, otherwise Yellow
   const [blankType, setBlankType] = useState<BlankType>(
     (savedGroups[0]?.blankType as BlankType) || 'Yellow'
   );
 
-  const { register, control, handleSubmit, reset, setValue } = useForm<PrintFormValues>({
+  // добавил getValues чтобы сохранить черновик перед навигацией
+  const { register, control, handleSubmit, reset, setValue, getValues } = useForm<PrintFormValues>({
     defaultValues: {
       organizationName: cfgRaw.organizationName || '',
       huntingPlace: cfgRaw.huntingPlace || '',
       issuedByName: cfgRaw.issuedByName || '',
       huntType: (cfgRaw as any).huntType || '',
+      jobTitle: cfgRaw.jobTitle || '',
       resources: [{ resource: '', dateFrom: '', dateTo: '', dailyLimit: '', seasonLimit: '' }],
       issueDate: new Date().toISOString().substring(0, 10),
       voucherNumber: '',
@@ -73,42 +67,66 @@ const PrintForm: React.FC = () => {
     name: 'resources',
   });
 
-  // group input state (datalist)
   const [groupInput, setGroupInput] = useState('');
 
   useEffect(() => {
     let mounted = true;
+
+    // Попытка восстановить черновик из localStorage
+    const tryLoadDraft = (): Partial<PrintFormValues> | null => {
+      try {
+        const raw = localStorage.getItem(DRAFT_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') return parsed as Partial<PrintFormValues>;
+        return null;
+      } catch (e) {
+        // парсинг не удался — игнорируем
+        return null;
+      }
+    };
+
+    const draft = tryLoadDraft();
+
     getAllHunters().then((list) => {
       if (!mounted) return;
       const h = list.find((x) => x.id === Number(id));
       if (h) {
         setHunter(h);
 
+        // дефолты берём из конфига, затем накладываем черновик если есть
         const defaults: PrintFormValues = {
           organizationName: cfgRaw.organizationName || '',
           huntingPlace: cfgRaw.huntingPlace || '',
           issuedByName: cfgRaw.issuedByName || '',
           huntType: (cfgRaw as any).huntType || '',
-          resources:
-            // keep existing resources if any, otherwise a single empty row
-            [{ resource: '', dateFrom: '', dateTo: '', dailyLimit: '', seasonLimit: '' }],
+          jobTitle: cfgRaw.jobTitle || '',
+          resources: [{ resource: '', dateFrom: '', dateTo: '', dailyLimit: '', seasonLimit: '' }],
           issueDate: new Date().toISOString().substring(0, 10),
           voucherNumber: '',
           voucherNote: '',
           voucherPermissionNumber: '',
         };
 
-        reset(defaults);
+        const merged = { ...defaults, ...(draft || {}) } as PrintFormValues;
+
+        // сбрасываем форму в merged (включая ресурсы)
+        reset(merged);
+        // явно устанавливаем jobTitle
+        setValue('jobTitle', merged.jobTitle);
       } else {
+        // если охотник не найден — возвращаемся на главную (защита)
         navigate('/');
       }
     });
+
     return () => {
       mounted = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigate, id, reset]);
+  }, [navigate, id, reset, setValue]);
 
+  // Преобразует сохранённую группу в массив ресурсов для useFieldArray
   const groupToResources = useCallback((g: SavedGroup): ResourceGroup[] => {
     const max = Math.min(g.animals.length, MAX_RESOURCES);
     return g.animals.slice(0, max).map((a) => ({
@@ -120,6 +138,7 @@ const PrintForm: React.FC = () => {
     }));
   }, []);
 
+  // Применить группу (по названию) или список животных, введённый вручную
   const applyGroup = (input: string) => {
     if (!input) return;
     const found = savedGroups.find((g) => g.name.toLowerCase() === input.trim().toLowerCase());
@@ -127,7 +146,6 @@ const PrintForm: React.FC = () => {
 
     if (found) {
       resourcesArr = groupToResources(found);
-      // set blank type from the saved group — guard against undefined
       const bt = (found.blankType as BlankType) || 'Yellow';
       setBlankType(bt);
     } else {
@@ -143,7 +161,6 @@ const PrintForm: React.FC = () => {
         if (!window.confirm(`Ввод содержит ${animals.length} животных, максимум ${MAX_RESOURCES}. Обрезать до ${MAX_RESOURCES}?`)) return;
       }
       const truncated = animals.slice(0, MAX_RESOURCES);
-      // default dates for manual entry groups (you can change)
       const dateFrom = '2025-09-15';
       const dateTo = '2026-02-28';
       resourcesArr = truncated.map((a) => ({
@@ -153,33 +170,62 @@ const PrintForm: React.FC = () => {
         dailyLimit: 'б/о',
         seasonLimit: 'б/о',
       }));
-      // for manual input, fallback to Yellow (or keep previous — choose fallback)
       setBlankType('Yellow');
     }
 
-    // обновляем useFieldArray и форму
     replace(resourcesArr);
     setValue('resources', resourcesArr);
   };
 
-  // We will derive voucherFrom/voucherTo from resources[0].dateFrom/dateTo when printing voucher
-  const onSubmit = (data: PrintFormValues) => {
-    if (!hunter) return;
+  // Сбор координат в зависимости от выбранного типа бланка
+  const buildCoords = (data: PrintFormValues) => {
     const effectiveBlank: BlankType = (blankType as BlankType) || 'Yellow';
-    const coords = getCoordsForBlank(effectiveBlank)(data);
-    console.log('[onSubmit] effectiveBlank:', effectiveBlank, coords);
-    generatePdf({
-      hunter,
-      form: data,
-      coords,
-    });
+    return getCoordsForBlank(effectiveBlank)(data);
   };
 
+  // ---- DOWNLOAD (Сформировать бланк) ----
+  const onSubmit = (data: PrintFormValues) => {
+    if (!hunter) return;
+    const coords = buildCoords(data);
+
+    if (!coords) {
+      alert('Ошибка: координаты шаблона не найдены. Проверьте getCoordsForBlank и выбранный тип бланка.');
+      return;
+    }
+
+    (async () => {
+      try {
+        // ВЫЗОВ: передаём три аргумента (hunter, form, coords)
+        const bytes = await generateBlankPdf(hunter, data, coords);
+
+        if (bytes) {
+          // сохранить и скачать
+          const blob = new Blob([new Uint8Array(bytes).buffer], { type: 'application/pdf' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${(hunter.fullName || 'document')}_разрешение.pdf`;
+          a.click();
+          URL.revokeObjectURL(url);
+        } else {
+          alert('Генерация PDF вернула пустой результат.');
+        }
+      } catch (err) {
+        console.error('Ошибка генерации PDF:', err);
+        alert('Ошибка при генерации PDF. Смотри консоль.');
+      }
+    })();
+  };
+
+  // ---- PRINT (через iframe) ----
   const onPrint = async (data: PrintFormValues) => {
     if (!hunter) return;
 
-    const effectiveBlank: BlankType = (blankType as BlankType) || 'Yellow';
-    const coords = getCoordsForBlank(effectiveBlank)(data);
+    const coords = buildCoords(data);
+    if (!coords) {
+      alert('Ошибка: координаты шаблона не найдены. Проверьте getCoordsForBlank и выбранный тип бланка.');
+      return;
+    }
 
     const iframe = document.createElement('iframe');
     Object.assign(iframe.style, {
@@ -191,51 +237,58 @@ const PrintForm: React.FC = () => {
     });
     document.body.appendChild(iframe);
 
-    // генерируем PDF и получаем Uint8Array
-    const pdfBytes = await generatePdf({
-      hunter,
-      form: data,
-      coords,
-      returnBytes: true,
-    });
-    if (!pdfBytes) { document.body.removeChild(iframe); return; }
+    try {
+      // ВЫЗОВ: три аргумента
+      const pdfBytes = await generateBlankPdf(hunter, data, coords);
 
-    const bytes = Uint8Array.from(pdfBytes as any);
-    const blob = new Blob([bytes], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
+      if (!pdfBytes) {
+        document.body.removeChild(iframe);
+        alert('Ошибка: генерация PDF вернула пустой результат.');
+        return;
+      }
 
-    iframe.src = url;
+      const bytes = Uint8Array.from(pdfBytes as any);
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
 
-    iframe.onload = () => {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
-    };
+      iframe.src = url;
 
-    // автоматически убираем iframe и освобождаем Blob через 5 минут
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
+      iframe.onload = () => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      };
+
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        if (document.body.contains(iframe)) document.body.removeChild(iframe);
+        console.log('DEBUG: iframe and Blob cleaned up after 5 minutes');
+      }, 300_000);
+    } catch (err) {
       if (document.body.contains(iframe)) document.body.removeChild(iframe);
-      console.log('DEBUG: iframe and Blob cleaned up after 5 minutes');
-    }, 300_000);
+      console.error('Ошибка при генерации PDF для печати', err);
+    }
   };
 
-  // new: print voucher — uses voucher-related fields and voucher dates taken from resources[0]
+  // ---- PRINT VOUCHER ----
   const onPrintVoucher = async (data: PrintFormValues) => {
     if (!hunter) return;
 
-    // derive voucherFrom / voucherTo from resources[0] (fallback to issueDate)
     const r0 = (data.resources && data.resources[0]) || null;
     const voucherFrom = r0?.dateFrom || data.issueDate;
     const voucherTo = r0?.dateTo || data.issueDate;
 
-    // build a form object that includes voucher fields so usePrint can use them
     const formForVoucher = {
       ...data,
       voucherFrom,
       voucherTo,
-    } as any;
+    } as PrintFormValues & { voucherFrom: string; voucherTo: string };
 
-    const voucherCoords = getCoordsForBlank('Voucher')(data);
+    const coords = getCoordsForBlank('Voucher')(formForVoucher as PrintFormValues);
+
+    if (!coords) {
+      alert('Ошибка: координаты путёвки не найдены. Проверьте getCoordsForBlank для путёвки и данные формы.');
+      return;
+    }
 
     const iframe = document.createElement('iframe');
     Object.assign(iframe.style, {
@@ -247,30 +300,49 @@ const PrintForm: React.FC = () => {
     });
     document.body.appendChild(iframe);
 
-    const pdfBytes = await generatePdf({
-      hunter,
-      form: formForVoucher,
-      coords: voucherCoords,
-      returnBytes: true,
-    });
-    if (!pdfBytes) { document.body.removeChild(iframe); return; }
+    try {
+      // ВЫЗОВ: три аргумента
+      const pdfBytes = await generateVoucherPdf(hunter, formForVoucher as any, coords);
 
-    const bytes = Uint8Array.from(pdfBytes as any);
-    const blob = new Blob([bytes], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
+      if (!pdfBytes) {
+        document.body.removeChild(iframe);
+        alert('Ошибка: генерация путёвки вернула пустой результат.');
+        return;
+      }
 
-    iframe.src = url;
+      const bytes = Uint8Array.from(pdfBytes as any);
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
 
-    iframe.onload = () => {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
-    };
+      iframe.src = url;
 
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
+      iframe.onload = () => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      };
+
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        if (document.body.contains(iframe)) document.body.removeChild(iframe);
+        console.log('DEBUG: iframe and Blob cleaned up after 5 minutes');
+      }, 300_000);
+    } catch (err) {
       if (document.body.contains(iframe)) document.body.removeChild(iframe);
-      console.log('DEBUG: iframe and Blob cleaned up after 5 minutes');
-    }, 300_000);
+      console.error('Ошибка при генерации путёвки для печати', err);
+    }
+  };
+
+  // Сохранить черновик в localStorage и перейти на главную для выбора другого охотника
+  const handleChooseAnother = () => {
+    try {
+      const values = getValues();
+      // сохраняем в localStorage
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(values));
+    } catch (e) {
+      // если что-то не удалось — всё равно переходим
+      console.warn('Не удалось сохранить черновик:', e);
+    }
+    navigate('/');
   };
 
   const handleAddResource = () => {
@@ -285,11 +357,20 @@ const PrintForm: React.FC = () => {
 
   return (
     <div className="print-form">
-      <button className="back" onClick={() => navigate('/')}>← Назад</button>
+      {/* Кнопка "Выбрать другого охотника" — сохраняет текущую форму и возвращает на главную */}
+      <div style={{ display: 'flex', justifyContent: 'flex-start', gap: 8 }}>
+        <button className="select-hunter-btn" type="button" onClick={handleChooseAnother}>
+          ← Выбрать другого охотника
+        </button>
+      </div>
+
       <h1>Заполнение данных для печати</h1>
 
       <div className="hunter-info">
-        <h2>Данные охотника</h2>
+        <div className="hunter-top">
+          <h2>Данные охотника</h2>
+        </div>
+
         <div className="hunter-fields">
           <div><strong>ФИО:</strong> {hunter.fullName}</div>
           <div><strong>Охотничий билет:</strong> {hunter.series} №{hunter.number}</div>
@@ -304,12 +385,11 @@ const PrintForm: React.FC = () => {
           {configFields.map(f => (
             <label key={String(f.key)}>
               {f.label}:
-              <input {...register(f.key as any)} />
+              <input {...register(f.key as any)} defaultValue={(cfgRaw as any)[f.key]} />
             </label>
           ))}
         </div>
 
-        {/* выбор/ввод группы */}
         <div className="group-row">
           <input
             list="groups-datalist"
@@ -353,20 +433,23 @@ const PrintForm: React.FC = () => {
           <button type="submit" className="submit">Сформировать бланк</button>
         </div>
 
-        {/* VOUCHER SECTION: classes aligned with resource fields */}
-        <h3>Печать путевки</h3>
+        <h3>Путёвка</h3>
 
-        <div className="resource-group">
+        <div className="resource-group voucher-block">
           <label>
-            Номер путевки:
+            Номер путёвки:
             <input type="text" {...register('voucherNumber')} />
           </label>
 
           <div className="dates">
-            {/* Даты путёвки берутся прямо из полей групп — resources[0] */}
             <label>С: <input type="date" {...register('resources.0.dateFrom' as const)} /></label>
             <label>По: <input type="date" {...register('resources.0.dateTo' as const)} /></label>
           </div>
+
+          <label>
+            Должность:
+            <input type="text" {...register('jobTitle')} defaultValue={cfgRaw.jobTitle || ''} />
+          </label>
 
           <label>
             Особая отметка:
@@ -382,7 +465,6 @@ const PrintForm: React.FC = () => {
             <button type="button" className="submit" onClick={handleSubmit(onPrintVoucher)}>Распечатать путёвку</button>
           </div>
         </div>
-        {/* END VOUCHER */}
 
       </form>
     </div>
