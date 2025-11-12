@@ -67,8 +67,8 @@ export const getCoordsForBlank = (blank: BlankType = 'Yellow') => (data: PrintFo
   };
 
   const voucher: PrintPositions = {
-    voucherNumber: { x: 218, y: 783 },
-    fullName: { x: 67, y: 555 },
+    voucherNumber: { x: 330, y: 535 },
+    fullName: { x:204, y: 332 },
     hunterTicketSeries: { x: 182, y: 543 },
     hunterTicketNumber: { x: 211, y: 543 },
     hunterIssueDate: { x: 137, yDay: 531 },
@@ -76,8 +76,8 @@ export const getCoordsForBlank = (blank: BlankType = 'Yellow') => (data: PrintFo
     voucherNote: { x: 35, y: 498 },
     jobTitle: { x: 42, y: 311 },
     resources: {
-      minDateFrom: { x: 50, y: 599 },
-      maxDateTo: { x: 240, y: 599 },
+      minDateFrom: { x: 50, y: 390 },
+      maxDateTo: { x: 50, y:350 },
     } as any,
   };
 
