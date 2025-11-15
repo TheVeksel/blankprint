@@ -42,7 +42,6 @@ const isSavedGroupArray = (v: any): v is SavedGroup[] => {
 };
 
 const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
-  // load raw config (may contain savedGroups)
   const raw = getConfig() as PrintConfig & { savedGroups?: SavedGroup[] };
   const savedGroupsInitial = raw.savedGroups || [];
 
@@ -63,20 +62,16 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
   const [gSeasonLimit, setGSeasonLimit] = useState('б/о');
   const [gBlankType, setGBlankType] = useState<'Yellow'|'Pink'|'Blue'>('Yellow');
 
-  // menu (three dots) state & file input ref
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // form/group dirty indicator
   const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
-    // initialize form + groups
     reset(raw);
     setGroups(savedGroupsInitial);
 
-    // close menu on outside click
     const onDocClick = (e: MouseEvent) => {
       if (!menuRef.current) return;
       if (!(e.target as Node) || menuRef.current.contains(e.target as Node)) return;
@@ -84,36 +79,47 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
     };
     document.addEventListener('click', onDocClick);
     return () => document.removeEventListener('click', onDocClick);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // watch form + groups and compute dirty state (compares with saved export hash)
   const watched = watch();
+
+  // --- исправленный dirty check ---
   useEffect(() => {
-    const merged = { ...watched, savedGroups: groups };
+    const animals = gAnimalsText.split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
+    let tempGroups = groups;
+
+    if (editing) {
+      const updated: SavedGroup = {
+        ...editing,
+        name: gName,
+        animals,
+        dateFrom: gDateFrom,
+        dateTo: gDateTo,
+        dailyLimit: gDailyLimit,
+        seasonLimit: gSeasonLimit,
+        blankType: gBlankType,
+      };
+      tempGroups = groups.map(g => g.id === editing.id ? updated : g);
+    }
+
+    const merged = { ...watched, savedGroups: tempGroups };
     setIsDirty(!isExported('config', merged));
-  }, [watched, groups]);
+  }, [watched, groups, editing, gName, gAnimalsText, gDateFrom, gDateTo, gDailyLimit, gSeasonLimit, gBlankType]);
 
   const persistConfig = (cfg: PrintConfig & { savedGroups?: SavedGroup[] }) => {
-    // Save whole object — setConfig will stringify. If savedGroups present we still persist them.
     setConfig(cfg as any);
   };
 
   const onSubmit = (data: PrintConfig) => {
-    // save cfg + groups
     const merged: PrintConfig & { savedGroups?: SavedGroup[] } = { ...data, savedGroups: groups };
     persistConfig(merged);
-    // when user explicitly saves, mark as exported (so beforeunload won't nag)
     markExported('config', merged);
     setIsDirty(false);
     onClose();
   };
 
   const saveGroup = () => {
-    const animals = gAnimalsText
-      .split(/[,;\n]/)
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const animals = gAnimalsText.split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
 
     if (!gName.trim()) {
       alert('Укажите имя группы');
@@ -135,8 +141,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
         seasonLimit: gSeasonLimit,
         blankType: gBlankType,
       };
-      const newGroups = groups.map((g) => (g.id === editing.id ? updated : g));
-      setGroups(newGroups);
+      setGroups(groups.map(g => g.id === editing.id ? updated : g));
     } else {
       const newGroup: SavedGroup = {
         id: uid(),
@@ -151,7 +156,6 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
       setGroups([newGroup, ...groups]);
     }
 
-    // reset group form
     setEditing(null);
     setGName('');
     setGAnimalsText('');
@@ -177,11 +181,9 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
 
   const deleteGroup = (id: string) => {
     if (!confirm('Удалить группу?')) return;
-    const newGroups = groups.filter((g) => g.id !== id);
-    setGroups(newGroups);
+    setGroups(groups.filter(g => g.id !== id));
   };
 
-  // Export config -> JSON file
   const handleExport = () => {
     try {
       const merged = { ...watched, savedGroups: groups };
@@ -193,7 +195,6 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
       a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
-      // помечаем как экспортированное
       markExported('config', merged);
       setIsDirty(false);
       setMenuOpen(false);
@@ -204,7 +205,6 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
     }
   };
 
-  // Import config JSON: trigger file input
   const handleImportClick = () => {
     setMenuOpen(false);
     fileInputRef.current?.click();
@@ -218,19 +218,14 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
       try {
         const parsed = JSON.parse(reader.result as string);
         if (typeof parsed !== 'object' || parsed === null) throw new Error('Невалидный формат');
-        // validate and normalize savedGroups if present
         const merged = { ...getConfig(), ...parsed } as PrintConfig & { savedGroups?: SavedGroup[] };
         if (parsed.savedGroups) {
-          if (!isSavedGroupArray(parsed.savedGroups)) {
-            throw new Error('savedGroups имеет неверную структуру');
-          }
+          if (!isSavedGroupArray(parsed.savedGroups)) throw new Error('savedGroups имеет неверную структуру');
           merged.savedGroups = parsed.savedGroups;
           setGroups(parsed.savedGroups);
         }
-        // write config
         persistConfig(merged);
         reset(merged);
-        // mark exported (we just imported from file -> treat as saved)
         markExported('config', merged);
         setIsDirty(false);
         alert('Конфиг импортирован и сохранён');
@@ -253,26 +248,18 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
       <div className="config-modal" onClick={(e) => e.stopPropagation()}>
         <div className="close-btn" onClick={onClose}>×</div>
 
-        {/* меню (три точки) */}
         <div className="menu-wrapper" ref={menuRef}>
           <button
             className="menu-button"
             aria-haspopup="true"
             aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((s) => !s)}
+            onClick={() => setMenuOpen(s => !s)}
             title="Ещё"
-          >
-            ⋯
-          </button>
+          >⋯</button>
 
           {menuOpen && (
             <div className="menu-dropdown" role="menu">
-              <button
-                className="menu-item"
-                onClick={handleExport}
-                role="menuitem"
-                title="Скачать конфиг в JSON"
-              >
+              <button className="menu-item" onClick={handleExport} role="menuitem" title="Скачать конфиг в JSON">
                 Экспорт конфига (JSON)
                 {isDirty && <span className="unsaved-dot" title="Есть несохранённые изменения" />}
               </button>
@@ -293,14 +280,12 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
 
           <hr />
 
-          {/* --- Путёвка (новое) --- */}
           <div className="voucher-block">
             <h3>Путёвка</h3>
             <div className="field">
               <label>Должность:</label>
               <input {...register('jobTitle' as any)} placeholder="" />
             </div>
-
             <div className="field">
               <label>Счётчик путёвок (начальный номер):</label>
               <input {...register('voucherNumber' as any)} placeholder="0001" />
@@ -313,10 +298,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
           <div className="groups-header">
             <h3>Группы ресурсов</h3>
             <div className="groups-actions">
-              <button
-                type="button"
-                onClick={() => { setShowGroupForm((s) => !s); setEditing(null); }}
-              >
+              <button type="button" onClick={() => { setShowGroupForm(s => !s); setEditing(null); }}>
                 {showGroupForm ? 'Закрыть форму' : 'Создать группу'}
               </button>
             </div>
@@ -362,7 +344,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
               <div className="group-row" key={g.id}>
                 <div className="group-info">
                   <strong>{g.name}</strong> — {g.animals.length} шт.
-                  <div className="group-meta"> {g.dateFrom} → {g.dateTo} · {g.dailyLimit}/{g.seasonLimit} · <em>{g.blankType}</em></div>
+                  <div className="group-meta">{g.dateFrom} → {g.dateTo} · {g.dailyLimit}/{g.seasonLimit} · <em>{g.blankType}</em></div>
                 </div>
                 <div className="group-controls">
                   <button type="button" onClick={() => editGroup(g)}>✎</button>
@@ -378,7 +360,6 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
           </div>
         </form>
 
-        {/* скрытый input для импорта */}
         <input
           ref={fileInputRef}
           type="file"

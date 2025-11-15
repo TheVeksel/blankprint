@@ -569,7 +569,7 @@ const PrintForm: React.FC = () => {
           <div className="group-controls voucher-actions">
             <button
               type="button"
-              className="submit"
+              className="print"
               onClick={handleSubmit(onPrintVoucher)}
             >
               Распечатать путёвку

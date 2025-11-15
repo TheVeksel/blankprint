@@ -254,7 +254,7 @@ $muted: #7b8794;
     }
 
     .submit {
-      background: $success-color;
+      background: $primary-color;
       color: #fff;
       padding: 10px 16px;
       border-radius: 10px;
@@ -269,7 +269,7 @@ $muted: #7b8794;
     }
 
     .print {
-      background: $primary-color;
+      background: $success-color;
       color: #fff;
       padding: 10px 16px;
       border-radius: 10px;
@@ -308,6 +308,15 @@ $muted: #7b8794;
         display: flex;
         justify-content: flex-end;
         margin-top: 8px;
+      }
+    }
+    .form-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      align-items: center;
+      button {
+        padding: 10px 50px;
       }
     }
   }
