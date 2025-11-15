@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import './ConfigModal.scss';
 import { getConfig, setConfig, type PrintConfig } from '../../utils/config';
+import { isExported, markExported, getSuggestedFilename } from '../../utils/saveHelpers';
 
 export interface SavedGroup {
   id: string;
@@ -45,7 +46,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
   const raw = getConfig() as PrintConfig & { savedGroups?: SavedGroup[] };
   const savedGroupsInitial = raw.savedGroups || [];
 
-  const { register, handleSubmit, reset } = useForm<PrintConfig>({
+  const { register, handleSubmit, reset, watch } = useForm<PrintConfig>({
     defaultValues: raw,
   });
 
@@ -67,10 +68,14 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // form/group dirty indicator
+  const [isDirty, setIsDirty] = useState(false);
+
   useEffect(() => {
     // initialize form + groups
     reset(raw);
     setGroups(savedGroupsInitial);
+
     // close menu on outside click
     const onDocClick = (e: MouseEvent) => {
       if (!menuRef.current) return;
@@ -82,14 +87,25 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // watch form + groups and compute dirty state (compares with saved export hash)
+  const watched = watch();
+  useEffect(() => {
+    const merged = { ...watched, savedGroups: groups };
+    setIsDirty(!isExported('config', merged));
+  }, [watched, groups]);
+
   const persistConfig = (cfg: PrintConfig & { savedGroups?: SavedGroup[] }) => {
-    setConfig(cfg);
+    // Save whole object — setConfig will stringify. If savedGroups present we still persist them.
+    setConfig(cfg as any);
   };
 
   const onSubmit = (data: PrintConfig) => {
     // save cfg + groups
     const merged: PrintConfig & { savedGroups?: SavedGroup[] } = { ...data, savedGroups: groups };
     persistConfig(merged);
+    // when user explicitly saves, mark as exported (so beforeunload won't nag)
+    markExported('config', merged);
+    setIsDirty(false);
     onClose();
   };
 
@@ -168,22 +184,27 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
   // Export config -> JSON file
   const handleExport = () => {
     try {
-      const cfg = { ...getConfig(), savedGroups: groups };
-      const blob = new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' });
+      const merged = { ...watched, savedGroups: groups };
+      const blob = new Blob([JSON.stringify(merged, null, 2)], { type: 'application/json' });
+      const filename = getSuggestedFilename('config').replace(/^saves\//, '');
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'print_config.json';
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
+      // помечаем как экспортированное
+      markExported('config', merged);
+      setIsDirty(false);
       setMenuOpen(false);
+      alert('Файл скачан. Поместите файл в папку проекта public/saves, если нужно хранить копию в проекте.');
     } catch (err) {
       console.error(err);
       alert('Ошибка при экспорте конфига');
     }
   };
 
-  // Import config JSON
+  // Import config JSON: trigger file input
   const handleImportClick = () => {
     setMenuOpen(false);
     fileInputRef.current?.click();
@@ -209,6 +230,9 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
         // write config
         persistConfig(merged);
         reset(merged);
+        // mark exported (we just imported from file -> treat as saved)
+        markExported('config', merged);
+        setIsDirty(false);
         alert('Конфиг импортирован и сохранён');
       } catch (err) {
         console.error(err);
@@ -243,7 +267,15 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
 
           {menuOpen && (
             <div className="menu-dropdown" role="menu">
-              <button className="menu-item" onClick={handleExport} role="menuitem">Экспорт конфига (JSON)</button>
+              <button
+                className="menu-item"
+                onClick={handleExport}
+                role="menuitem"
+                title="Скачать конфиг в JSON"
+              >
+                Экспорт конфига (JSON)
+                {isDirty && <span className="unsaved-dot" title="Есть несохранённые изменения" />}
+              </button>
               <button className="menu-item" onClick={handleImportClick} role="menuitem">Импорт конфига (JSON)</button>
             </div>
           )}
@@ -266,7 +298,13 @@ const ConfigModal: React.FC<ConfigModalProps> = ({ onClose }) => {
             <h3>Путёвка</h3>
             <div className="field">
               <label>Должность:</label>
-              <input {...register('jobTitle')} placeholder="" />
+              <input {...register('jobTitle' as any)} placeholder="" />
+            </div>
+
+            <div className="field">
+              <label>Счётчик путёвок (начальный номер):</label>
+              <input {...register('voucherNumber' as any)} placeholder="0001" />
+              <div className="hint">Введите начальный номер в формате числа (будет показан с ведущими нулями до 4 цифр).</div>
             </div>
           </div>
 

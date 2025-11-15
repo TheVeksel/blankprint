@@ -17,6 +17,7 @@ export interface ResourcePosition {
 export interface VoucherResourcesPos {
   minDateFrom: XY;
   maxDateTo: XY;
+  specialMark: XY;
 }
 
 export type ResourcesPositions = ResourcePosition[] | VoucherResourcesPos;
@@ -35,6 +36,7 @@ export interface PrintPositions {
   huntType?: XY;
   jobTitle?: XY;
   voucherNote?: XY;
+  voucherPermissionNumber?:XY;
   resources?: ResourcesPositions;
 
   // поля задней стороны
@@ -123,9 +125,6 @@ export const generateBlankPdf = async (hunter: any, form: PrintFormValues, coord
   if (coords.huntingPlace) drawFrontDouble((form as any).huntingPlace || '', coords.huntingPlace);
   if (coords.huntType) drawFrontDouble((form as any).huntType || '', coords.huntType);
 
-  const issuedByText = (form as any).issuedBy ?? (form as any).issuedByName ?? '';
-  if (coords.issuedBy) drawFrontDouble(issuedByText, coords.issuedBy);
-
   if (isResourcePositions(coords.resources)) {
     (coords.resources as ResourcePosition[]).forEach((c, i) => {
       const r = form.resources?.[i];
@@ -157,7 +156,7 @@ export const generateBlankPdf = async (hunter: any, form: PrintFormValues, coord
   if (coords.backOrganizationName) drawBackDouble((form as any).organizationName || '', coords.backOrganizationName);
 
   const backIssuedByText = (form as any).issuedBy ?? (form as any).issuedByName ?? '';
-  if (coords.backIssueBy) drawBackDouble(backIssuedByText, coords.backIssueBy);
+  if (coords.issuedBy) drawBackDouble(backIssuedByText, coords.issuedBy);
 
   if (coords.backIssueDate && (form as any).issueDate) {
     const d = new Date((form as any).issueDate);
@@ -194,7 +193,7 @@ export const generateVoucherPdf = async (
   const font = await loadRoboto(pdf);
 
   // Горизонтальный сдвиг для дублирования (подогнать под шаблон)
-  const OFFSET_X = 274;
+  const OFFSET_X = 387;
 
   // Утилита: получить XY из XYDate (TS-совместимо)
   const xyFromDatePos = (dpos?: XYDate): XY => {
@@ -261,6 +260,14 @@ export const generateVoucherPdf = async (
   const issuedByText = (form as any).issuedBy ?? (form as any).issuedByName ?? '';
   if (coords.issuedBy && issuedByText) {
     drawDoubleX(issuedByText, coords.issuedBy as XY);
+  }
+  const specialMarkText = (form as any).specialMark ?? '';
+  if (isVoucherResources(coords.resources) && coords.resources.specialMark && specialMarkText) {
+    drawDoubleX(specialMarkText, coords.resources.specialMark);
+  }
+  const voucherPermissionNumberText = (form as any).voucherPermissionNumber ?? '';
+  if (coords.voucherPermissionNumber && voucherPermissionNumberText) {
+    drawDoubleX(voucherPermissionNumberText, coords.voucherPermissionNumber);
   }
 
   // Даты действия путевки (minDateFrom / maxDateTo)

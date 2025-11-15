@@ -1,9 +1,11 @@
+// src/components/UserManager/UserManager.tsx
 import { useEffect, useState } from 'react';
 import { getAllHunters, addHunter, clearHunters, deleteHunter, updateHunter } from '../../db';
 import { useNavigate } from 'react-router-dom';
 import ConfigModal from '../ConfigModal/ConfigModal';
 import { getConfig } from '../../utils/config';
 import './UserManager.scss';
+import { isExported, markExported, getSuggestedFilename } from '../../utils/saveHelpers'
 
 interface HunterForm {
   id?: number;
@@ -25,6 +27,9 @@ const UserManager = () => {
   const [showConfig, setShowConfig] = useState(false);
   const navigate = useNavigate();
 
+  // dirty: есть изменения, которые не экспортированы в JSON (saves)
+  const [isDirty, setIsDirty] = useState(false);
+
   const loadHunters = async () => {
     const all = await getAllHunters();
     setHunters(sortByFullName(all));
@@ -36,6 +41,25 @@ const UserManager = () => {
     const cfg = getConfig();
     setForm((f) => ({ ...f, issuedBy: cfg.issuedByName || '' }));
   }, []);
+
+  // пересчитываем dirty при изменении списка охотников
+  useEffect(() => {
+    setIsDirty(!isExported('hunters', hunters));
+  }, [hunters]);
+
+  // beforeunload: если есть несохранённые изменения — показать предупреждение
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!isDirty) return;
+      const msg = 'Есть несохранённые изменения (изменены охотники/настройки печати). Сохраните JSON в удобное для себя место, например: в папку saves.';
+      e.preventDefault();
+      // старые браузеры читают returnValue
+      e.returnValue = msg;
+      return msg;
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
 
   const handleAdd = async () => {
     const { fullName, series, number, issueDate } = form;
@@ -74,15 +98,25 @@ const UserManager = () => {
     await loadHunters();
   };
 
-  const handleExport = () => {
-    const dataStr = JSON.stringify(hunters, null, 2);
+  const doDownload = (filename: string, dataStr: string) => {
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'hunters_backup.json';
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleExport = () => {
+    const dataStr = JSON.stringify(hunters, null, 2);
+    // имя файла с путём suggested: saves/...
+    const suggested = getSuggestedFilename('hunters').replace(/^saves\//, '');
+    doDownload(suggested, dataStr);
+    // пометим как экспортированное (localStorage)
+    markExported('hunters', hunters);
+    setIsDirty(false);
+    alert('Файл скачан. Поместите файл в папку проекта public/saves (если хотите хранить бэкап в репозитории/папке).');
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -94,7 +128,6 @@ const UserManager = () => {
       if (!Array.isArray(data)) throw new Error('Неверный формат файла');
       await clearHunters();
       for (const hunter of data) {
-        // Удаляем id, чтобы IndexedDB сгенерировал новый (если в файле они есть)
         const { id, ...rest } = hunter as any;
         await addHunter(rest as HunterForm);
       }
@@ -103,7 +136,6 @@ const UserManager = () => {
     } catch (err) {
       alert('Ошибка импорта: ' + (err as Error).message);
     } finally {
-      // Сброс input'а чтобы можно было импортировать тот же файл снова
       (e.target as HTMLInputElement).value = '';
     }
   };
@@ -160,14 +192,22 @@ const UserManager = () => {
         />
 
         <div className="import-export">
-          <button onClick={handleExport}>📤 Экспорт JSON</button>
-          <label className="import-label">
-            📥 Импорт JSON
+          <button
+            type="button"
+            className="small-btn export-btn"
+            onClick={handleExport}
+          >
+            📤 Сохранить список охотников (JSON)
+            {isDirty && <span className="unsaved-dot" title="Есть несохранённые изменения" />}
+          </button>
+
+          <label className="small-btn import-label">
+            📥 Импорт списка охотников (JSON)
             <input
               type="file"
               accept=".json"
               onChange={handleImport}
-              style={{ display: 'none' }}
+              aria-label="Импорт списка охотников"
             />
           </label>
         </div>

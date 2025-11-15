@@ -4,13 +4,14 @@ export interface PrintConfig {
     huntingPlace: string;
     huntType:string;
     jobTitle:string;
+    voucherNumber: string;
 }
 
 const CONFIG_KEY = 'printConfig';
 
 export const getConfig = (): PrintConfig => {
     const cfg = localStorage.getItem(CONFIG_KEY);
-    return cfg ? JSON.parse(cfg) : { issuedByName: '', organizationName: '', huntingPlace: '', huntType:'', jobTitle:'' };
+    return cfg ? JSON.parse(cfg) : { issuedByName: '', organizationName: '', huntingPlace: '', huntType:'', jobTitle:'', voucherNumber:'0001' };
 };
 
 export const setConfig = (cfg: PrintConfig) => {
