@@ -315,9 +315,9 @@ const drawStatementCopy = (
   form: PrintFormValues
 ) => {
   const right = x + width;
-  const bodySize = 7.2;
-  const legalSize = 6.5;
-  const lineHeight = 10;
+  const bodySize = 7.6;
+  const legalSize = 8;
+  const lineHeight = 11;
   const draw = (text: string, dx: number, y: number, size = bodySize) =>
     page.drawText(text, { x: dx, y, font, size });
   const drawLines = (text: string, dx: number, y: number, maxWidth: number, size = bodySize, leading = lineHeight) => {
@@ -387,7 +387,8 @@ const drawStatementCopy = (
     'Я согласен на обработку своих персональных данных в соответствии с требованиями законодательства Российской Федерации.',
   ];
   const legalLines = legalParagraphs.flatMap((paragraph) => wrapPdfText(paragraph, font, legalSize, width));
-  const legalLeading = Math.max(8, (y - 58) / legalLines.length);
+  // Размер шрифта соответствует исходному бланку; компактный интервал сохраняет текст читаемым.
+  const legalLeading = 10;
   legalLines.forEach((line) => {
     draw(line, x, y, legalSize);
     y -= legalLeading;
