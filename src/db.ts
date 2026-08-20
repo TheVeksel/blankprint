@@ -1,12 +1,13 @@
 // src/db.ts
 // Простая работа с IndexedDB для офлайн хранения данных пользователей
 
-interface Hunter {
+export interface Hunter {
   id?: number;
   fullName: string;       // ФИО
   series: string;         // Серия билета (например, "78")
   number: string;         // Номер билета (например, "014843")
   issueDate: string;      // Дата выдачи (например, "2022-03-01")
+  phone?: string;
 }
 
 const DB_NAME = 'huntersDB';

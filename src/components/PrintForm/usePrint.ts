@@ -282,6 +282,136 @@ export const generateVoucherPdf = async (
   return pdf.save();
 };
 
+const formatStatementDate = (value?: string) => {
+  if (!value) return '';
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${pad2(date.getDate())}.${pad2(date.getMonth() + 1)}.${date.getFullYear()}`;
+};
+
+const wrapPdfText = (text: string, font: any, size: number, maxWidth: number) => {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let line = '';
+  words.forEach((word) => {
+    const next = line ? `${line} ${word}` : word;
+    if (line && font.widthOfTextAtSize(next, size) > maxWidth) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = next;
+    }
+  });
+  if (line) lines.push(line);
+  return lines;
+};
+
+const drawStatementCopy = (
+  page: any,
+  font: any,
+  x: number,
+  width: number,
+  hunter: any,
+  form: PrintFormValues
+) => {
+  const right = x + width;
+  const bodySize = 6.2;
+  const legalSize = 4.6;
+  const lineHeight = 8;
+  const draw = (text: string, dx: number, y: number, size = bodySize) =>
+    page.drawText(text, { x: dx, y, font, size });
+  const drawLines = (text: string, dx: number, y: number, maxWidth: number, size = bodySize, leading = lineHeight) => {
+    const lines = wrapPdfText(text, font, size, maxWidth);
+    lines.forEach((line, index) => draw(line, dx, y - index * leading, size));
+    return y - lines.length * leading;
+  };
+  const centered = (text: string, y: number, size = bodySize) => {
+    const textWidth = font.widthOfTextAtSize(text, size);
+    draw(text, x + (width - textWidth) / 2, y, size);
+  };
+  const value = (text: string) => text || '____________________________';
+
+  const resourceNames = (form.resources || [])
+    .map((resource) => resource.resource.trim())
+    .filter(Boolean)
+    .join(', ');
+  const fromDates = (form.resources || []).map((resource) => resource.dateFrom).filter(Boolean).sort();
+  const toDates = (form.resources || []).map((resource) => resource.dateTo).filter(Boolean).sort();
+  const huntFrom = formatStatementDate(fromDates[0]);
+  const huntTo = formatStatementDate(toDates[toDates.length - 1]);
+
+  let y = 570;
+  y = drawLines('Председателю МОО «Союз общественных охотничье-рыболовных организаций Всеволожского района Ленинградской области»', x + width * 0.49, y, width * 0.49, 5.7, 7);
+  y -= 3;
+  y = drawLines(`от ${value(hunter.fullName || '')}`, x + width * 0.49, y, width * 0.49, 6, 7);
+  draw('(Ф.И.О.)', x + width * 0.72, y + 1, 4.6);
+  y -= 11;
+  draw(`Телефон: ${value(form.phone || hunter.phone || '')}`, x + width * 0.49, y, 5.8);
+
+  y -= 22;
+  centered('Заявление', y, 8);
+  y -= 15;
+  draw('Прошу выдать мне разрешение на добычу охотничьих ресурсов.', x, y, bodySize);
+  y -= 14;
+  y = drawLines(`Вид охоты: ${value(form.huntType || '')}`, x, y, width, bodySize);
+  y -= 1;
+  draw('Добываемые охотничьи ресурсы:', x, y, bodySize);
+  y -= 8;
+  y = drawLines(value(resourceNames), x, y, width, bodySize);
+  y -= 1;
+  draw('Предполагаемые сроки охоты:', x, y, bodySize);
+  y -= 9;
+  draw(`с ${value(huntFrom)} по ${value(huntTo)}`, x, y, bodySize);
+  y -= 14;
+  draw('Места охоты: охот. участок «Соколье»', x, y, bodySize);
+  y -= 14;
+  draw(`Охотничий билет: серия ${hunter.series || '_____'} №${hunter.number || '________________'}, дата выдачи ${formatStatementDate(hunter.issueDate) || '____________'} г.`, x, y, 5.7);
+  y -= 14;
+  y = drawLines(`Приложение: ${value(form.specialMark || '')}`, x, y, width, bodySize);
+  draw('(при охоте с подружейными собаками, прилагать копии документов)', x + 55, y - 1, 4.2);
+  y -= 16;
+
+  const legalParagraphs = [
+    'В соответствии с п. 1 ст. 29 Федерального закона «Об охоте и сохранении охотничьих ресурсов и о внесении изменений в отдельные законодательные акты Российской Федерации» от 24 июля 2009 года № 209-ФЗ право на добычу охотничьих ресурсов у физических лиц возникает на основании разрешения.',
+    'Бланк разрешения является документом строгой отчетности.',
+    'Сведения о добытых охотничьих ресурсах и их количестве направляются по месту выдачи разрешения после добычи, ранения животного или окончания срока охоты.',
+    'Я ознакомлен с порядком и сроками представления сведений о добытых охотничьих ресурсах и их количестве. Я обязуюсь осуществлять охоту гуманным способом и ознакомлен с правилами охоты и безопасности при проведении охоты.',
+    'Я согласен на обработку своих персональных данных в соответствии с требованиями законодательства Российской Федерации.',
+  ];
+  legalParagraphs.forEach((paragraph) => {
+    y = drawLines(paragraph, x, y, width, legalSize, 5.6) - 3;
+  });
+
+  y = Math.max(y - 4, 34);
+  draw(`${formatStatementDate(form.issueDate) || '____________'} г.`, x, y, 5.8);
+  draw('________________', x + width * 0.49, y, 5.8);
+  draw('________________________', x + width * 0.72, y, 5.8);
+  draw('(подпись заявителя)', x + width * 0.49, y - 7, 4.3);
+  draw('(Фамилия и инициалы)', x + width * 0.72, y - 7, 4.3);
+  page.drawLine({ start: { x, y: 18 }, end: { x: right, y: 18 }, thickness: 0.25 });
+};
+
+/** Печатный лист из двух заявлений на одном листе A4. */
+export const generateStatementPdf = async (hunter: any, form: PrintFormValues) => {
+  const pdf = await PDFDocument.create();
+  const font = await loadRoboto(pdf);
+  const page = pdf.addPage([841.89, 595.28]);
+  const margin = 16;
+  const gap = 18;
+  const copyWidth = (841.89 - margin * 2 - gap) / 2;
+
+  drawStatementCopy(page, font, margin, copyWidth, hunter, form);
+  drawStatementCopy(page, font, margin + copyWidth + gap, copyWidth, hunter, form);
+  page.drawLine({
+    start: { x: margin + copyWidth + gap / 2, y: 18 },
+    end: { x: margin + copyWidth + gap / 2, y: 578 },
+    thickness: 0.35,
+    dashArray: [2, 2],
+  });
+
+  return pdf.save();
+};
+
 /* ---------- Сам usePrint ---------- */
 export const usePrint = () => {
   const printPdf = async (type: 'blank' | 'voucher', hunter: any, form: PrintFormValues, coords: PrintPositions) => {

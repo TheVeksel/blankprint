@@ -69,6 +69,19 @@ $muted: #7b8794;
       gap: 16px;
       flex-wrap: wrap;
       align-items: center;
+
+      label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      input {
+        min-width: 150px;
+        padding: 6px 8px;
+        border: 1px solid $input-border;
+        border-radius: 7px;
+      }
     }
 
     strong {
@@ -307,6 +320,8 @@ $muted: #7b8794;
       .voucher-actions {
         display: flex;
         justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 10px;
         margin-top: 8px;
       }
     }

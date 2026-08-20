@@ -2,8 +2,8 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm, useFieldArray } from 'react-hook-form';
-import { getAllHunters } from '../../db';
-import { generateBlankPdf, generateVoucherPdf } from './usePrint';
+import { getAllHunters, updateHunter } from '../../db';
+import { generateBlankPdf, generateStatementPdf, generateVoucherPdf } from './usePrint';
 import { getConfig, type PrintConfig, setConfig } from '../../utils/config';
 import { getCoordsForBlank, type BlankType } from '../../utils/coords';
 import './PrintForm.scss';
@@ -23,6 +23,7 @@ export interface PrintFormValues extends PrintConfig {
   voucherNumber: string;
   specialMark: string;
   voucherPermissionNumber: string;
+  phone: string;
 }
 
 const MAX_RESOURCES = 10;
@@ -67,6 +68,7 @@ const PrintForm: React.FC = () => {
         voucherNumber: cfgRaw.voucherNumber || '',
         specialMark: '',
         voucherPermissionNumber: '',
+        phone: '',
       },
     });
 
@@ -124,6 +126,7 @@ const PrintForm: React.FC = () => {
         voucherNumber: cfgRaw.voucherNumber || '',
         specialMark: '',
         voucherPermissionNumber: '',
+        phone: h.phone || '',
       };
 
       const merged = { ...defaults, ...(draft || {}) } as PrintFormValues;
@@ -138,6 +141,7 @@ const PrintForm: React.FC = () => {
         voucherNumber: cfgRaw.voucherNumber || '',
         voucherPermissionNumber: '',
         issueDate: new Date().toISOString().substring(0, 10),
+        phone: h.phone || '',
       });
 
     });
@@ -369,9 +373,50 @@ const PrintForm: React.FC = () => {
     }
   };
 
+  const onPrintStatement = async (data: PrintFormValues) => {
+    if (!hunter) return;
+
+    const phone = data.phone.trim();
+    const hunterForPrint = { ...hunter, phone };
+
+    try {
+      if (phone && phone !== (hunter.phone || '')) {
+        await updateHunter(hunterForPrint);
+        setHunter(hunterForPrint);
+      }
+
+      const pdfBytes = await generateStatementPdf(hunterForPrint, data);
+      const iframe = document.createElement('iframe');
+      Object.assign(iframe.style, {
+        position: 'fixed', left: '-2000px', top: '0', width: '1px', height: '1px',
+      });
+      document.body.appendChild(iframe);
+
+      const blob = new Blob([Uint8Array.from(pdfBytes)], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      iframe.src = url;
+      iframe.onload = () => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      };
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        if (document.body.contains(iframe)) document.body.removeChild(iframe);
+      }, 300000);
+    } catch (err) {
+      console.error(err);
+      alert('Ошибка печати заявления');
+    }
+  };
+
   const handleChooseAnother = () => {
     try {
-      const { jobTitle, voucherNumber, voucherPermissionNumber, issueDate, ...rest } = getValues();
+      const rest = { ...getValues() } as Partial<PrintFormValues>;
+      delete rest.jobTitle;
+      delete rest.voucherNumber;
+      delete rest.voucherPermissionNumber;
+      delete rest.issueDate;
+      delete rest.phone;
 
       localStorage.setItem(DRAFT_KEY, JSON.stringify(rest));
     } catch (e) {
@@ -426,6 +471,10 @@ const PrintForm: React.FC = () => {
             <strong>Дата выдачи:</strong>{' '}
             {new Date(hunter.issueDate).toLocaleDateString()}
           </div>
+          <label>
+            <strong>Номер телефона:</strong>
+            <input type="tel" placeholder="Не указан" {...register('phone')} />
+          </label>
         </div>
       </div>
 
@@ -573,6 +622,13 @@ const PrintForm: React.FC = () => {
               onClick={handleSubmit(onPrintVoucher)}
             >
               Распечатать путёвку
+            </button>
+            <button
+              type="button"
+              className="print"
+              onClick={handleSubmit(onPrintStatement)}
+            >
+              Распечатать заявление
             </button>
           </div>
         </div>

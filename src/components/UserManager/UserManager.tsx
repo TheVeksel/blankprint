@@ -14,6 +14,7 @@ interface HunterForm {
   number: string;
   issueDate: string;
   issuedBy?: string;
+  phone?: string;
 }
 
 const sortByFullName = (list: HunterForm[]) =>
@@ -21,7 +22,7 @@ const sortByFullName = (list: HunterForm[]) =>
 
 const UserManager = () => {
   const [hunters, setHunters] = useState<HunterForm[]>([]);
-  const [form, setForm] = useState<HunterForm>({ fullName: '', series: '', number: '', issueDate: '' });
+  const [form, setForm] = useState<HunterForm>({ fullName: '', series: '', number: '', issueDate: '', phone: '' });
   const [search, setSearch] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showConfig, setShowConfig] = useState(false);
@@ -68,7 +69,7 @@ const UserManager = () => {
       return;
     }
     await addHunter(form);
-    setForm({ fullName: '', series: '', number: '', issueDate: '' });
+    setForm({ fullName: '', series: '', number: '', issueDate: '', phone: '' });
     await loadHunters();
   };
 
@@ -175,6 +176,12 @@ const UserManager = () => {
           value={form.issueDate}
           onChange={e => setForm({ ...form, issueDate: e.target.value })}
         />
+        <input
+          type="tel"
+          placeholder="Номер телефона"
+          value={form.phone || ''}
+          onChange={e => setForm({ ...form, phone: e.target.value })}
+        />
         <button onClick={handleAdd}>Добавить</button>
         <button className="danger" onClick={handleClear}>Очистить всё</button>
         <button className="config-btn" onClick={() => setShowConfig(true)}>Настройки печати</button>
@@ -237,6 +244,12 @@ const UserManager = () => {
                   type="date"
                   value={h.issueDate}
                   onChange={e => handleEditChange(h.id!, 'issueDate', e.target.value)}
+                />
+                <input
+                  type="tel"
+                  placeholder="Номер телефона"
+                  value={h.phone || ''}
+                  onChange={e => handleEditChange(h.id!, 'phone', e.target.value)}
                 />
                 <div className="edit-actions">
                   <button className="save" onClick={() => handleSave(h)}>💾</button>
