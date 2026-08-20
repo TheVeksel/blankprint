@@ -315,9 +315,9 @@ const drawStatementCopy = (
   form: PrintFormValues
 ) => {
   const right = x + width;
-  const bodySize = 6.2;
-  const legalSize = 4.6;
-  const lineHeight = 8;
+  const bodySize = 7.2;
+  const legalSize = 6.5;
+  const lineHeight = 10;
   const draw = (text: string, dx: number, y: number, size = bodySize) =>
     page.drawText(text, { x: dx, y, font, size });
   const drawLines = (text: string, dx: number, y: number, maxWidth: number, size = bodySize, leading = lineHeight) => {
@@ -328,6 +328,11 @@ const drawStatementCopy = (
   const centered = (text: string, y: number, size = bodySize) => {
     const textWidth = font.widthOfTextAtSize(text, size);
     draw(text, x + (width - textWidth) / 2, y, size);
+  };
+  const drawOneLine = (text: string, dx: number, y: number, maxWidth: number, preferredSize: number, minSize = 5) => {
+    let size = preferredSize;
+    while (size > minSize && font.widthOfTextAtSize(text, size) > maxWidth) size -= 0.2;
+    draw(text, dx, y, size);
   };
   const value = (text: string) => text || '____________________________';
 
@@ -341,16 +346,16 @@ const drawStatementCopy = (
   const huntTo = formatStatementDate(toDates[toDates.length - 1]);
 
   let y = 570;
-  y = drawLines('Председателю МОО «Союз общественных охотничье-рыболовных организаций Всеволожского района Ленинградской области»', x + width * 0.49, y, width * 0.49, 5.7, 7);
-  y -= 3;
-  y = drawLines(`от ${value(hunter.fullName || '')}`, x + width * 0.49, y, width * 0.49, 6, 7);
-  draw('(Ф.И.О.)', x + width * 0.72, y + 1, 4.6);
-  y -= 11;
-  draw(`Телефон: ${value(form.phone || hunter.phone || '')}`, x + width * 0.49, y, 5.8);
+  y = drawLines('Председателю МОО «Союз общественных охотничье-рыболовных организаций Всеволожского района Ленинградской области»', x + width * 0.47, y, width * 0.53, 6.4, 8);
+  y -= 4;
+  drawOneLine(`от ${value(hunter.fullName || '')}`, x + width * 0.47, y, width * 0.53, 7.1);
+  draw('(Ф.И.О.)', x + width * 0.75, y - 7, 5);
+  y -= 17;
+  drawOneLine(`Телефон: ${value(form.phone || hunter.phone || '')}`, x + width * 0.47, y, width * 0.53, 6.6);
 
-  y -= 22;
-  centered('Заявление', y, 8);
-  y -= 15;
+  y -= 26;
+  centered('Заявление', y, 9);
+  y -= 18;
   draw('Прошу выдать мне разрешение на добычу охотничьих ресурсов.', x, y, bodySize);
   y -= 14;
   y = drawLines(`Вид охоты: ${value(form.huntType || '')}`, x, y, width, bodySize);
@@ -365,24 +370,30 @@ const drawStatementCopy = (
   y -= 14;
   draw('Места охоты: охот. участок «Соколье»', x, y, bodySize);
   y -= 14;
-  draw(`Охотничий билет: серия ${hunter.series || '_____'} №${hunter.number || '________________'}, дата выдачи ${formatStatementDate(hunter.issueDate) || '____________'} г.`, x, y, 5.7);
-  y -= 14;
-  y = drawLines(`Приложение: ${value(form.specialMark || '')}`, x, y, width, bodySize);
-  draw('(при охоте с подружейными собаками, прилагать копии документов)', x + 55, y - 1, 4.2);
+  draw(`Охотничий билет: серия ${hunter.series || '_____'} №${hunter.number || '________________'}, дата выдачи ${formatStatementDate(hunter.issueDate) || '____________'} г.`, x, y, 6.5);
   y -= 16;
+  y = drawLines(`Приложение: ${value(form.specialMark || '')}`, x, y, width, bodySize);
+  draw('(при охоте с подружейными собаками, прилагать копии документов)', x + 55, y - 2, 4.8);
+  y -= 20;
 
   const legalParagraphs = [
     'В соответствии с п. 1 ст. 29 Федерального закона «Об охоте и сохранении охотничьих ресурсов и о внесении изменений в отдельные законодательные акты Российской Федерации» от 24 июля 2009 года № 209-ФЗ право на добычу охотничьих ресурсов у физических лиц возникает на основании разрешения.',
     'Бланк разрешения является документом строгой отчетности.',
-    'Сведения о добытых охотничьих ресурсах и их количестве направляются по месту выдачи разрешения после добычи, ранения животного или окончания срока охоты.',
-    'Я ознакомлен с порядком и сроками представления сведений о добытых охотничьих ресурсах и их количестве. Я обязуюсь осуществлять охоту гуманным способом и ознакомлен с правилами охоты и безопасности при проведении охоты.',
+    'Согласно приказу Минприроды РФ от 29 августа 2014 года № 379 «Об утверждении порядка оформления и выдачи разрешений на добычу охотничьих ресурсов, порядка подачи заявок и заявлений, необходимых для выдачи таких разрешений, и утверждении форм бланков разрешений на добычу копытных животных, медведей, пушных животных, птиц», сведения о добытых охотничьих ресурсах и их количестве направляются по месту выдачи разрешения в течение срока, указанного в разрешении, после добычи, ранения животного или окончания последнего из сроков осуществления охоты.',
+    'Я ознакомлен с порядком и сроками представления сведений о добытых охотничьих ресурсах и их количестве.',
+    'Я обязуюсь осуществлять охоту гуманным способом в соответствии с международными стандартами.',
+    'Я ознакомлен с границами кварталов охотничьего хозяйства, а также границами зон охраны охотничьих ресурсов.',
+    'Я ознакомлен с правилами охоты и безопасности при проведении охоты.',
     'Я согласен на обработку своих персональных данных в соответствии с требованиями законодательства Российской Федерации.',
   ];
-  legalParagraphs.forEach((paragraph) => {
-    y = drawLines(paragraph, x, y, width, legalSize, 5.6) - 3;
+  const legalLines = legalParagraphs.flatMap((paragraph) => wrapPdfText(paragraph, font, legalSize, width));
+  const legalLeading = Math.max(8, (y - 58) / legalLines.length);
+  legalLines.forEach((line) => {
+    draw(line, x, y, legalSize);
+    y -= legalLeading;
   });
 
-  y = Math.max(y - 4, 34);
+  y = Math.max(y - 6, 34);
   draw(`${formatStatementDate(form.issueDate) || '____________'} г.`, x, y, 5.8);
   draw('________________', x + width * 0.49, y, 5.8);
   draw('________________________', x + width * 0.72, y, 5.8);
