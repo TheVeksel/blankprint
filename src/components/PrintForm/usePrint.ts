@@ -2,6 +2,7 @@
 import { degrees, PDFDocument, StandardFonts } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import type { PrintFormValues } from './PrintForm';
+import robotoFontUrl from '../../assets/Roboto-Regular.ttf';
 
 export type XY = { x: number; y: number };
 export type XYDate = { x: number; yDay?: number; yMonth?: number; yYear?: number };
@@ -71,8 +72,6 @@ const drawText = (page: any, text: string, pos: XY, font: any, size = 8, rotateD
 
 /* ---------- Загрузка единственного шрифта (Roboto) ---------- */
 // Путь к вашему Roboto в public/
-const FONT_PATH = '/Roboto-Regular.ttf';
-
 const loadRoboto = async (pdf: PDFDocument): Promise<any> => {
   try {
     pdf.registerFontkit(fontkit);
@@ -81,12 +80,14 @@ const loadRoboto = async (pdf: PDFDocument): Promise<any> => {
   }
 
   try {
-    const res = await fetch(FONT_PATH);
+    // Vite встраивает этот шрифт в основной bundle, поэтому генерация PDF
+    // не зависит от отдельного сетевого запроса к /Roboto-Regular.ttf.
+    const res = await fetch(robotoFontUrl);
     if (!res.ok) throw new Error(`Font fetch failed: ${res.status}`);
     const arrayBuffer = await res.arrayBuffer();
     return await pdf.embedFont(arrayBuffer as any);
   } catch (err) {
-    console.warn(`Не удалось загрузить шрифт Roboto по ${FONT_PATH}. Использую StandardFonts.TimesRoman как запасной.`, err);
+    console.warn('Не удалось загрузить шрифт Roboto. Использую StandardFonts.TimesRoman как запасной.', err);
     return await pdf.embedFont(StandardFonts.TimesRoman);
   }
 };
