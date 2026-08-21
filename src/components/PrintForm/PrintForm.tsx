@@ -218,6 +218,40 @@ const PrintForm: React.FC = () => {
     return getCoordsForBlank(effective)(data);
   };
 
+  // Открываем окно прямо во время клика: так браузер не блокирует печать,
+  // даже если подготовка PDF на слабом компьютере занимает несколько секунд.
+  const openPrintPreview = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Браузер заблокировал окно печати. Разрешите всплывающие окна для этого сайта и повторите попытку.');
+      return null;
+    }
+    printWindow.document.title = 'Подготовка документа к печати';
+    printWindow.document.body.innerHTML = '<p style="font-family: sans-serif; padding: 24px">Подготавливаем документ к печати…</p>';
+    return printWindow;
+  };
+
+  const showPdfAndPrint = (printWindow: Window, pdfBytes: Uint8Array) => {
+    const safeBytes = Uint8Array.from(pdfBytes);
+    const blob = new Blob([safeBytes.buffer], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    let printRequested = false;
+
+    const requestPrint = () => {
+      if (printRequested || printWindow.closed) return;
+      printRequested = true;
+      printWindow.focus();
+      printWindow.print();
+    };
+
+    printWindow.onload = () => window.setTimeout(requestPrint, 400);
+    printWindow.location.href = url;
+
+    // Если конкретный PDF-просмотрщик не выдаёт событие load, документ всё
+    // равно остаётся открыт в отдельной вкладке и его можно распечатать вручную.
+    window.setTimeout(() => URL.revokeObjectURL(url), 300000);
+  };
+
   const onSubmit = (data: PrintFormValues) => {
     if (!hunter) return;
 
@@ -260,15 +294,8 @@ const PrintForm: React.FC = () => {
       return;
     }
 
-    const iframe = document.createElement('iframe');
-    Object.assign(iframe.style, {
-      position: 'fixed',
-      left: '-2000px',
-      top: '0',
-      width: '1px',
-      height: '1px',
-    });
-    document.body.appendChild(iframe);
+    const printWindow = openPrintPreview();
+    if (!printWindow) return;
 
     try {
       const pdfBytes = await generateBlankPdf(hunter, data, coords);
@@ -277,23 +304,10 @@ const PrintForm: React.FC = () => {
         return;
       }
 
-      const blob = new Blob([Uint8Array.from(pdfBytes)], {
-        type: 'application/pdf',
-      });
-      const url = URL.createObjectURL(blob);
-      iframe.src = url;
-
-      iframe.onload = () => {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-      };
-
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-        if (document.body.contains(iframe)) document.body.removeChild(iframe);
-      }, 300000);
+      showPdfAndPrint(printWindow, pdfBytes);
     } catch (err) {
       console.error(err);
+      printWindow.close();
     }
   };
 
@@ -324,15 +338,8 @@ const PrintForm: React.FC = () => {
       return;
     }
 
-    const iframe = document.createElement('iframe');
-    Object.assign(iframe.style, {
-      position: 'fixed',
-      left: '-2000px',
-      top: '0',
-      width: '1px',
-      height: '1px',
-    });
-    document.body.appendChild(iframe);
+    const printWindow = openPrintPreview();
+    if (!printWindow) return;
 
     try {
       const pdfBytes = await generateVoucherPdf(
@@ -352,29 +359,19 @@ const PrintForm: React.FC = () => {
       const nextStr = padVoucher(nextNum);
       setConfig({ ...cfg, voucherNumber: nextStr });
 
-      const blob = new Blob([Uint8Array.from(pdfBytes)], {
-        type: 'application/pdf',
-      });
-      const url = URL.createObjectURL(blob);
-      iframe.src = url;
-
-      iframe.onload = () => {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-      };
-
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-        if (document.body.contains(iframe)) document.body.removeChild(iframe);
-      }, 300000);
+      showPdfAndPrint(printWindow, pdfBytes);
     } catch (err) {
       console.error(err);
+      printWindow.close();
       alert('Ошибка печати путёвки');
     }
   };
 
   const onPrintStatement = async (data: PrintFormValues) => {
     if (!hunter) return;
+
+    const printWindow = openPrintPreview();
+    if (!printWindow) return;
 
     const phone = data.phone.trim();
     const hunterForPrint = { ...hunter, phone };
@@ -386,25 +383,10 @@ const PrintForm: React.FC = () => {
       }
 
       const pdfBytes = await generateStatementPdf(hunterForPrint, data);
-      const iframe = document.createElement('iframe');
-      Object.assign(iframe.style, {
-        position: 'fixed', left: '-2000px', top: '0', width: '1px', height: '1px',
-      });
-      document.body.appendChild(iframe);
-
-      const blob = new Blob([Uint8Array.from(pdfBytes)], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      iframe.src = url;
-      iframe.onload = () => {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-      };
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-        if (document.body.contains(iframe)) document.body.removeChild(iframe);
-      }, 300000);
+      showPdfAndPrint(printWindow, pdfBytes);
     } catch (err) {
       console.error(err);
+      printWindow.close();
       alert('Ошибка печати заявления');
     }
   };
