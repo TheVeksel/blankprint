@@ -289,6 +289,20 @@ const formatStatementDate = (value?: string) => {
   return `${pad2(date.getDate())}.${pad2(date.getMonth() + 1)}.${date.getFullYear()}`;
 };
 
+const formatSignatureName = (fullName?: string) => {
+  const [lastName = '', firstName = '', middleName = ''] = (fullName || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!lastName) return '';
+  const initials = [firstName, middleName]
+    .filter(Boolean)
+    .map((name) => `${name[0]}.`)
+    .join('');
+  return initials ? `${lastName} ${initials}` : lastName;
+};
+
 const wrapPdfText = (text: string, font: any, size: number, maxWidth: number) => {
   const words = text.trim().split(/\s+/).filter(Boolean);
   const lines: string[] = [];
@@ -395,9 +409,10 @@ const drawStatementCopy = (
   });
 
   y = Math.max(y - 6, 34);
+  const signatureName = formatSignatureName(hunter.fullName);
   draw(`${formatStatementDate(form.issueDate) || '____________'} г.`, x, y, 5.8);
   draw('________________', x + width * 0.49, y, 5.8);
-  draw('________________________', x + width * 0.72, y, 5.8);
+  drawOneLine(signatureName || '________________________', x + width * 0.72, y, width * 0.28, 6.4, 5);
   draw('(подпись заявителя)', x + width * 0.49, y - 7, 4.3);
   draw('(Фамилия и инициалы)', x + width * 0.72, y - 7, 4.3);
   page.drawLine({ start: { x, y: 18 }, end: { x: right, y: 18 }, thickness: 0.25 });
